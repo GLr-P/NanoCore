@@ -25,7 +25,7 @@ jobs:
       - name: Install test bot
         run: npm ci --prefix tools/bot
       - name: Boot test on a real Paper server, with a bot player
-        run: BOT=1 bash tools/smoke-test.sh target/NanoCore-*.jar 26.3
+        run: BOT=1 BOT_DIAG=1 bash tools/smoke-test.sh target/NanoCore-*.jar 26.3
       - uses: actions/upload-artifact@v5
         with:
           name: NanoCore
