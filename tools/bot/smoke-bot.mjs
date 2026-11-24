@@ -4,7 +4,11 @@ import mineflayer from 'mineflayer'
 
 const host = process.argv[2] ?? '127.0.0.1'
 const port = Number(process.argv[3] ?? 25599)
-const bot = mineflayer.createBot({ host, port, username: 'NanoBot', version: '26.1', auth: 'offline' })
+const bot = mineflayer.createBot({ host, port, username: 'NanoBot', version: '26.1', auth: 'offline', physicsEnabled: false })
+bot.on('physicsTick', () => {})
+bot._client.on('packet', (data, meta) => {
+  if (meta.name === 'position' || meta.name === 'player_position') console.log('BOT position packet:', JSON.stringify(data).slice(0, 300))
+})
 
 const finish = (code, msg) => {
   console.log(msg)
