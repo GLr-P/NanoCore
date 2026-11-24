@@ -15,6 +15,8 @@ import io.github.glrp.nanocore.event.EventService;
 import io.github.glrp.nanocore.gui.MenuListener;
 import io.github.glrp.nanocore.milestone.LockListener;
 import io.github.glrp.nanocore.milestone.MilestoneService;
+import io.github.glrp.nanocore.pshop.PlayerShopService;
+import io.github.glrp.nanocore.command.PlayerShopCommands;
 import io.github.glrp.nanocore.quest.QuestBoards;
 import io.github.glrp.nanocore.quest.QuestService;
 import io.github.glrp.nanocore.shop.SellListener;
@@ -45,6 +47,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
     private QuestService quests;
     private QuestBoards questBoards;
     private EventService events;
+    private PlayerShopService playerShops;
 
     @Override
     public void onEnable() {
@@ -62,6 +65,8 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         shop = new ShopService(db, milestones, getLogger());
         shop.reload(getConfig().getConfigurationSection("admin-shop"));
         shop.loadToday();
+        playerShops = new PlayerShopService(this, db);
+        playerShops.reload(getConfig().getConfigurationSection("player-shops"));
         quests = new QuestService(this, db, messages);
         questBoards = new QuestBoards(this, db);
         stats.subscribe((player, stat, amount, where) -> quests.onStat(player, stat, amount));
@@ -89,6 +94,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         pm.registerEvents(new MenuListener(), this);
         pm.registerEvents(new SellListener(), this);
         pm.registerEvents(questBoards, this);
+        pm.registerEvents(playerShops, this);
         pm.registerEvents(events, this);
         pm.registerEvents(events.kits(), this);
         pm.registerEvents(new EventRulesListener(this), this);
@@ -102,6 +108,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         quests.checkRefresh();
         getServer().getScheduler().runTaskTimer(this, this::questTick, 20L, 100L);
         getServer().getScheduler().runTaskTimer(this, events::tick, 40L, 20L);
+        getServer().getScheduler().runTaskTimer(this, playerShops::tick, 30L, 20L);
 
         if (pm.getPlugin("Vault") != null) {
             try {
@@ -115,11 +122,13 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         QuestCommands questCommands = new QuestCommands(this);
         StatsCommands statsCommands = new StatsCommands(this);
         EventCommands eventCommands = new EventCommands(this);
+        PlayerShopCommands shopCommands = new PlayerShopCommands(this);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             commands.register(event.registrar());
             questCommands.register(event.registrar());
             statsCommands.register(event.registrar());
             eventCommands.register(event.registrar());
+            shopCommands.register(event.registrar());
         });
 
         // Players already online (after a reload) need accounts and stats.
@@ -142,6 +151,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
             questBoards.flushBacklog();
             questBoards.removeLabels();
         }
+        if (playerShops != null) playerShops.removeDisplays();
         if (stats != null) stats.flush();
         if (placed != null) placed.saveAll(null);
         if (db != null) db.close();
@@ -158,6 +168,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         messages.reload();
         economy.setCurrencyNames(settings.currencySingular(), settings.currencyPlural());
         shop.reload(getConfig().getConfigurationSection("admin-shop"));
+        playerShops.reload(getConfig().getConfigurationSection("player-shops"));
         quests.reload();
         events.reload();
     }
@@ -212,5 +223,9 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
 
     public EventService events() {
         return events;
+    }
+
+    public PlayerShopService playerShops() {
+        return playerShops;
     }
 }

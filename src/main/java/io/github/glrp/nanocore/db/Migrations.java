@@ -38,6 +38,12 @@ final class Migrations {
                     "CREATE TABLE event_history (id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT NOT NULL, name TEXT NOT NULL, started INTEGER NOT NULL, ended INTEGER NOT NULL, results TEXT NOT NULL)",
                     "CREATE TABLE event_kits (uuid TEXT PRIMARY KEY, data TEXT NOT NULL)",
                     "CREATE TABLE event_claims (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, item BLOB NOT NULL)"
+            },
+            // 5: player shops
+            new String[]{
+                    "CREATE TABLE pshops (id INTEGER PRIMARY KEY, owner TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, item BLOB NOT NULL, mode TEXT NOT NULL, sell_price INTEGER NOT NULL, buy_price INTEGER NOT NULL, created INTEGER NOT NULL, UNIQUE (world, x, y, z))",
+                    "CREATE TABLE pshop_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL, shop INTEGER NOT NULL, owner TEXT NOT NULL, customer TEXT NOT NULL, kind TEXT NOT NULL, item TEXT NOT NULL, amount INTEGER NOT NULL, coins INTEGER NOT NULL, seen INTEGER NOT NULL)",
+                    "CREATE INDEX pshop_sales_owner ON pshop_sales (owner, seen)"
             }
     );
 

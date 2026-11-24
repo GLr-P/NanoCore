@@ -225,7 +225,95 @@ async function first() {
   await expect('/nanocore shop status NanoBot', /sold 150 coins of 150 coins today/, 'shop status')
 
   await quests(count)
+  await shops()
+  await panel()
   await events(count)
+}
+
+// --- Player shops: NanoBot makes a diamond shop, NanoPal buys and sells, the chest is protected ---
+const SHOP = new Vec3(46, -60, 48)
+
+async function palWindowAfter(action, step) {
+  const opened = new Promise((resolve) => pal.once('windowOpen', (w) => resolve(w)))
+  await action()
+  const w = await Promise.race([opened, sleep(5000).then(() => null)])
+  if (!w) throw new Error(`${step} (no window opened for the second player)`)
+  await sleep(300)
+  return w
+}
+
+async function shops() {
+  await connectPal()
+  await expect('/tp NanoBot 46.5 -60 46.5', /Teleported/, 'tp to the shop spot')
+  await expect('/tp NanoPal 47.5 -60 49.5', /Teleported/, 'pal to the shop spot')
+  await sleep(1500)
+  await expect(`/setblock ${SHOP.x} ${SHOP.y} ${SHOP.z} chest`, /Changed the block/i, 'shop chest')
+  await expect('/pshop new', /Player shops open at the Grand Market/, 'shops locked until the milestone')
+  await expect('/nanocore milestone unlock player_shops', /now unlocked/, 'unlock player shops')
+  const diamond = bot.inventory.items().find((i) => i.name === 'diamond')
+  if (!diamond) throw new Error('shop (the bot has no diamond to hold)')
+  await bot.equip(diamond, 'hand')
+  await expect('/pshop new', /right-click the chest or barrel/, 'pick the chest')
+  const made = chat.length
+  await windowAfter(() => bot.activateBlock(bot.blockAt(SHOP)), 'make the shop (setup window)')
+  await waitChat(made, /Shop made!/, 'shop made')
+  await click(23, 'mode: both')
+  await click(33, 'price +10')
+  bot.closeWindow(bot.currentWindow)
+  await sleep(300)
+  await expect(`/item replace block ${SHOP.x} ${SHOP.y} ${SHOP.z} container.0 with diamond 10`, /Replaced|slot/i, 'stock the shop')
+  await expect('/pshop list', /#1 NanoBot diamond at world 46 -60 48: both, sell 11, buy 1, 10 in stock/, 'shop listed')
+  await sleep(2500) // labels refresh every second
+  await expect('/execute positioned 46.5 -58.3 48.5 if entity @e[type=minecraft:text_display,distance=..0.6]', /Test passed/, 'shop label')
+  await expect('/execute positioned 46.5 -58.85 48.5 if entity @e[type=minecraft:item_display,distance=..0.6]', /Test passed/, 'floating item')
+
+  const shopWin = await palWindowAfter(() => pal.activateBlock(pal.blockAt(SHOP)), 'pal opens the shop')
+  console.log(`STEP shop window: slot 10 ${shopWin.slots[10]?.name}, 14 ${shopWin.slots[14]?.name}`)
+  if (shopWin.slots[10]?.name !== 'diamond' || shopWin.slots[14]?.name !== 'diamond') throw new Error('shop window (no buy/sell buttons)')
+  let p0 = palChat.length
+  const s0 = chat.length
+  await palWindowAfter(() => pal.clickWindow(11, 0, 0), 'pal buys 8')
+  await palSees(p0, /You bought 8 .*for 88 coins/, 'pal bought 8')
+  await waitChat(s0, /NanoPal bought 8 .*You got 87 coins/, 'owner hears about the sale (2% tax)')
+  p0 = palChat.length
+  await palWindowAfter(() => pal.clickWindow(14, 0, 0), 'pal sells 1 back')
+  await palSees(p0, /You sold 1 .*for 1 coin/, 'pal sold 1')
+  pal.closeWindow(pal.currentWindow)
+  await sleep(500)
+  const palDiamonds = pal.inventory.items().filter((i) => i.name === 'diamond').reduce((n, i) => n + i.count, 0)
+  if (palDiamonds !== 7) throw new Error(`shop trade (pal should have 7 diamonds, has ${palDiamonds})`)
+  await expect('/balance NanoPal', /NanoPal's balance: 13 coins/, 'pal paid')
+  await expect('/balance', /Balance: 1,961 coins/, 'owner paid')
+  await expect('/pshop list', /both, sell 11, buy 1, 3 in stock/, 'stock after trades')
+
+  p0 = palChat.length
+  console.log('STEP pal tries to break the shop')
+  await Promise.race([pal.dig(pal.blockAt(SHOP), true).catch(() => {}), sleep(7000)])
+  try { pal.stopDigging() } catch {}
+  await palSees(p0, /That's NanoBot's shop/, 'shop protected from others')
+  await sleep(500)
+  if (bot.blockAt(SHOP)?.name !== 'chest') throw new Error('shop protection (the chest was broken)')
+}
+
+// --- Control panel (/nc): a setting changed from the GUI is saved; players get their own menu ---
+async function panel() {
+  const win = await windowAfter(() => bot.chat('/nc'), 'open the control panel')
+  console.log(`STEP panel: slot 19 ${win.slots[19]?.name}, 31 ${win.slots[31]?.name}`)
+  if (win.slots[19]?.name !== 'player_head' || win.slots[31]?.name !== 'comparator') throw new Error('control panel layout')
+  await click(31, 'settings')
+  await click(15, 'player shop limit')
+  let s = chat.length
+  await click(14, 'limit +1')
+  await waitChat(s, /Player shop limit is now 11/, 'setting saved')
+  s = chat.length
+  await click(12, 'limit -1')
+  await waitChat(s, /Player shop limit is now 10/, 'setting back')
+  bot.closeWindow(bot.currentWindow)
+  await sleep(300)
+  const pm = await palWindowAfter(() => pal.chat('/nc'), 'pal opens the player menu')
+  if (pm.slots[12]?.name !== 'chest' || pm.slots[22]?.name === 'comparator') throw new Error('player menu (wrong buttons)')
+  pal.closeWindow(pm)
+  await sleep(300)
 }
 
 // --- Events: Mining Rush scoring and prizes, a vote with a second player, kit mode across a restart ---
@@ -253,7 +341,7 @@ async function palSees(start, pattern, step, timeout = 8000) {
 }
 
 async function events(count) {
-  await connectPal()
+  if (!pal) await connectPal()
 
   // Mining Rush: join, mine two ores, check the score, end with prizes.
   await expect('/event start mining_rush', /Event: Mining Rush/, 'start mining rush')
@@ -281,7 +369,7 @@ async function events(count) {
   await waitChat(start, /You came 1st! You got 250 coins and a trophy/, 'first prize')
   await sleep(500)
   if (count('gold_ingot') !== 1) throw new Error(`trophy (expected 1 gold ingot trophy, have ${count('gold_ingot')})`)
-  await expect('/balance', /Balance: 2,125 coins/, 'event prize paid')
+  await expect('/balance', /Balance: 2,211 coins/, 'event prize paid')
   await expect('/event history', /Mining Rush: 1\. NanoBot/, 'event history')
 
   // Vote: NanoBot votes for NanoPal, who wins the vote.
@@ -460,13 +548,16 @@ async function storehouseLocked() {
 }
 
 async function second() {
-  await expect('/balance', /Balance: 2,125 coins/, 'balance saved')
+  await expect('/balance', /Balance: 2,211 coins/, 'balance saved')
   await questsSaved()
   await freshBoard()
   await expect('/sell', /sold all you can today/, 'shop limit saved')
   await expect('/nanocore milestone list', /nether: unlocked/, 'milestone saved')
   await expect('/nanocore stats NanoBot place.', /place\.dirt=1/, 'stats saved')
   await expect('/nanocore area list', /town: .*radius 50/, 'area saved')
+  await expect('/pshop list', /#1 NanoBot diamond at world 46 -60 48: both, sell 11, buy 1, 3 in stock/, 'shop saved')
+  await sleep(2500)
+  await expect('/execute positioned 46.5 -58.3 48.5 if entity @e[type=minecraft:text_display,distance=..0.6]', /Test passed/, 'shop label after restart')
   await kitAfterRestart()
   await storehouseLocked()
 }
@@ -474,7 +565,7 @@ async function second() {
 async function third() {
   const s = await expect('/quests status NanoBot', /Quests for NanoBot:/, 'board after restart')
   if (/=claimed|=active|=done|\(reroll\)/.test(s.split('|')[0])) throw new Error(`old progress came back after a restart: ${s}`)
-  await expect('/balance', /Balance: 2,130 coins/, 'balance after second restart (kit test paid 5 for taking part)')
+  await expect('/balance', /Balance: 2,216 coins/, 'balance after second restart (kit test paid 5 for taking part)')
   await connectPal()
   await palSees(0, /Your own things are back/, 'offline player gets their things back on joining', 10000)
   pal.end()

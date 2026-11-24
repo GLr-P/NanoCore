@@ -82,7 +82,7 @@ public final class CoreCommands {
             SellMenu.open(plugin, p);
             return Command.SINGLE_SUCCESS;
         }).build(), "Sells rare items to the server");
-        commands.register(admin().build(), "NanoCore admin commands", List.of("nc"));
+        commands.register(admin().build(), "NanoCore menu (everything in one window)", List.of("nc"));
     }
 
     // --- /balance [player] ---
@@ -181,13 +181,21 @@ public final class CoreCommands {
 
     private LiteralArgumentBuilder<CommandSourceStack> admin() {
         return Commands.literal("nanocore")
-                .requires(src -> src.getSender().hasPermission("nanocore.admin"))
-                .then(Commands.literal("version").executes(ctx -> {
+                .executes(ctx -> {
+                    if (!(ctx.getSource().getSender() instanceof Player p)) {
+                        msg().send(ctx.getSource().getSender(), "general.players-only");
+                        return 0;
+                    }
+                    if (p.hasPermission("nanocore.admin")) io.github.glrp.nanocore.admin.ControlPanel.open(plugin, p);
+                    else io.github.glrp.nanocore.admin.PlayerMenu.open(plugin, p);
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(Commands.literal("version").requires(CoreCommands::admin).executes(ctx -> {
                     ctx.getSource().getSender().sendMessage(Component.text(
                             "NanoCore " + plugin.getPluginMeta().getVersion() + " on " + plugin.getServer().getMinecraftVersion(), NamedTextColor.GREEN));
                     return Command.SINGLE_SUCCESS;
                 }))
-                .then(Commands.literal("reload").executes(ctx -> {
+                .then(Commands.literal("reload").requires(CoreCommands::admin).executes(ctx -> {
                     plugin.reloadSettings();
                     msg().send(ctx.getSource().getSender(), "general.reloaded");
                     return Command.SINGLE_SUCCESS;
@@ -196,14 +204,18 @@ public final class CoreCommands {
                 .then(milestoneAdmin())
                 .then(area())
                 .then(shopAdmin())
-                .then(Commands.literal("stats").then(playerArg("player")
+                .then(Commands.literal("stats").requires(CoreCommands::admin).then(playerArg("player")
                         .executes(ctx -> stats(ctx, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word())
                                 .executes(ctx -> stats(ctx, StringArgumentType.getString(ctx, "prefix"))))));
     }
 
+    private static boolean admin(CommandSourceStack src) {
+        return src.getSender().hasPermission("nanocore.admin");
+    }
+
     private LiteralArgumentBuilder<CommandSourceStack> ecoAdmin() {
-        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("eco");
+        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("eco").requires(CoreCommands::admin);
         for (String op : List.of("give", "take", "set")) {
             root.then(Commands.literal(op).then(playerArg("player").then(
                     Commands.argument("amount", LongArgumentType.longArg(0)).executes(ctx -> {
@@ -234,7 +246,7 @@ public final class CoreCommands {
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> milestoneAdmin() {
-        return Commands.literal("milestone")
+        return Commands.literal("milestone").requires(CoreCommands::admin)
                 .then(Commands.literal("list").executes(ctx -> {
                     for (Milestone m : Milestone.values()) {
                         msg().send(ctx.getSource().getSender(), "milestones.list-line", "id", m.id(),
@@ -265,7 +277,7 @@ public final class CoreCommands {
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> shopAdmin() {
-        return Commands.literal("shop")
+        return Commands.literal("shop").requires(CoreCommands::admin)
                 .then(Commands.literal("status").then(playerArg("player").executes(ctx -> shopPlayer(ctx, false))))
                 .then(Commands.literal("reset").then(playerArg("player").executes(ctx -> shopPlayer(ctx, true))))
                 .then(Commands.literal("prices").executes(ctx -> {
@@ -295,7 +307,7 @@ public final class CoreCommands {
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> area() {
-        return Commands.literal("area")
+        return Commands.literal("area").requires(CoreCommands::admin)
                 .then(Commands.literal("pos1").executes(ctx -> corner(ctx, 0)))
                 .then(Commands.literal("pos2").executes(ctx -> corner(ctx, 1)))
                 .then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> {

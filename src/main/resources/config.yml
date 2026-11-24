@@ -60,6 +60,14 @@ quests:
   # /quests counts as standing at the board within this many blocks of one.
   board-reach: 6
 
+player-shops:
+  # Shops each player can have (admins have no limit).
+  limit: 10
+  # Percent of every player shop sale that disappears, so money doesn't pile up. 0 = none.
+  tax-percent: 2
+  # Seconds you have to right-click your chest after clicking "New shop".
+  pick-seconds: 30
+
 events:
   # The kinds of events are in events.yml (and any .yml file in the events folder next to it).
   auto:
