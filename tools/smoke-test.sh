@@ -4,6 +4,7 @@
 # Used by GitHub Actions; also runs on any Linux box with Java 25, curl and jq.
 set -euo pipefail
 
+TOOLS="$(cd "$(dirname "$0")" && pwd)"
 JAR="$(realpath "$1")"
 MC="${2:-26.3}"
 WORK="${SMOKE_DIR:-$(mktemp -d)}"
@@ -59,7 +60,7 @@ bot_fail=0
 if [ "${BOT:-0}" = 1 ]; then
   echo "op NanoBot" >&3
   sleep 1
-  node "$(dirname "$0")/bot/smoke-bot.mjs" 127.0.0.1 25599 || bot_fail=1
+  node "$TOOLS/bot/smoke-bot.mjs" 127.0.0.1 25599 || bot_fail=1
 fi
 echo "stop" >&3
 exec 3>&-
