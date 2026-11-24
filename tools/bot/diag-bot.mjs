@@ -1,24 +1,19 @@
-// Diagnostics only: joins, logs every packet it sends (first 4 of each kind) for 6 s, reports a kick.
-import mineflayer from 'mineflayer'
+// Diagnostics: joins with physics on, stays 8 s, walks a little, reports any kick. Exit 0 = stayed connected.
+import { createTestBot } from './lib.mjs'
 
-const physics = process.env.BOT_PHYSICS !== '0'
-const bot = mineflayer.createBot({ host: '127.0.0.1', port: 25599, username: 'DiagBot', version: '26.1', auth: 'offline', physicsEnabled: physics })
-const seen = {}
+const bot = createTestBot('DiagBot')
 const t0 = Date.now()
-const write = bot._client.write.bind(bot._client)
-bot._client.write = (name, params) => {
-  seen[name] = (seen[name] ?? 0) + 1
-  if (seen[name] <= 4 && name !== 'keep_alive') {
-    console.log(`DIAG +${Date.now() - t0}ms sends ${name}`, JSON.stringify(params, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)).slice(0, 300))
-  }
-  return write(name, params)
-}
-bot._client.on('packet', (data, meta) => {
-  if (/position|teleport|disconnect|kick/.test(meta.name)) console.log(`DIAG +${Date.now() - t0}ms gets ${meta.name}`, JSON.stringify(data).slice(0, 300))
+let kicked = false
+bot.once('spawn', () => {
+  bot.setControlState('forward', true)
+  setTimeout(() => bot.setControlState('forward', false), 1500)
 })
-bot.on('kicked', (r) => console.log(`DIAG +${Date.now() - t0}ms kicked (physics=${physics})`, JSON.stringify(r)))
-bot.on('end', () => {
-  console.log('DIAG packet counts', JSON.stringify(seen))
-  process.exit(0)
+bot.on('kicked', (r) => {
+  kicked = true
+  console.log(`DIAG +${Date.now() - t0}ms kicked`, JSON.stringify(r))
 })
-setTimeout(() => bot.end(), 6000)
+bot.on('end', () => process.exit(kicked ? 1 : 0))
+setTimeout(() => {
+  console.log(`DIAG stayed connected 8 s, moved to ${bot.entity?.position}`)
+  bot.end()
+}, 8000)

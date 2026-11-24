@@ -63,8 +63,7 @@ if [ "${BOT:-0}" = 1 ]; then
   echo "op NanoBot" >&3
   sleep 1
   if [ "${BOT_DIAG:-0}" = 1 ]; then
-    BOT_PHYSICS=1 node "$TOOLS/bot/diag-bot.mjs" || true
-    BOT_PHYSICS=0 node "$TOOLS/bot/diag-bot.mjs" || true
+    node "$TOOLS/bot/diag-bot.mjs" || true
   fi
   node "$TOOLS/bot/smoke-bot.mjs" 127.0.0.1 25599 || bot_fail=1
 fi
