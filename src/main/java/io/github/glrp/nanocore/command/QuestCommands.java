@@ -46,12 +46,11 @@ public final class QuestCommands {
         return s.getSender().hasPermission("nanocore.admin");
     }
 
-    private final SuggestionProvider<CommandSourceStack> templates = (ctx, b) -> {
-        for (String id : plugin.quests().templates().keySet()) if (id.startsWith(b.getRemainingLowerCase())) b.suggest(id);
-        return b.buildFuture();
-    };
-
     public void register(Commands commands) {
+        SuggestionProvider<CommandSourceStack> templates = (ctx, b) -> {
+            for (String id : plugin.quests().templates().keySet()) if (id.startsWith(b.getRemainingLowerCase())) b.suggest(id);
+            return b.buildFuture();
+        };
         commands.register(Commands.literal("quests")
                 .executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player p)) {
