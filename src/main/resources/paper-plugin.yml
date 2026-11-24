@@ -1,0 +1,14 @@
+name: NanoCore
+version: '${project.version}'
+main: io.github.glrp.nanocore.NanoCorePlugin
+description: 'All-in-one server plugin: economy, shops, quests, events and milestone locks.'
+api-version: '26.3'
+website: https://github.com/GLr-P/NanoCore
+dependencies:
+  server:
+    VaultUnlocked:
+      load: BEFORE
+      required: false
+    BlueMap:
+      load: BEFORE
+      required: false
