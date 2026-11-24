@@ -15,10 +15,17 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/bot/package-lock.json
       - name: Build and unit tests
         run: mvn -B -ntp verify
-      - name: Boot test on a real Paper server
-        run: bash tools/smoke-test.sh target/NanoCore-*.jar 26.3
+      - name: Install test bot
+        run: npm ci --prefix tools/bot
+      - name: Boot test on a real Paper server, with a bot player
+        run: BOT=1 bash tools/smoke-test.sh target/NanoCore-*.jar 26.3
       - uses: actions/upload-artifact@v4
         with:
           name: NanoCore

@@ -1,0 +1,12 @@
+{
+  "name": "nanocore-test-bot",
+  "private": true,
+  "type": "module",
+  "description": "Mineflayer bots that play-test NanoCore on a throwaway server",
+  "scripts": {
+    "smoke": "node smoke-bot.mjs"
+  },
+  "dependencies": {
+    "mineflayer": "4.39.0"
+  }
+}

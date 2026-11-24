@@ -3,3 +3,4 @@ target/
 *.iml
 .vscode/
 smoke/
+node_modules/
