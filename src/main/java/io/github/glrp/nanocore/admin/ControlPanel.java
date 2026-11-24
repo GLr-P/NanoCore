@@ -274,8 +274,7 @@ public final class ControlPanel {
                 menu.set(slot++, Menu.item(mat == null || !mat.isItem() ? Material.PAPER : mat, title, lore), e -> later(plugin, () -> {
                     if (e.isRightClick()) {
                         Confirm.open(plugin, p, m.item("panel.price-remove-confirm", "item", item), List.of(), () -> {
-                            plugin.getConfig().set("admin-shop.prices." + item, null);
-                            saveAndReload(plugin);
+                            setConfig(plugin, "admin-shop.prices." + item, null);
                             adminShop(plugin, p);
                         }, () -> adminShop(plugin, p));
                     } else {
@@ -297,8 +296,7 @@ public final class ControlPanel {
             String item = hand.getType().getKey().getKey();
             String path = "admin-shop.prices." + item;
             if (plugin.getConfig().get(path) == null) {
-                plugin.getConfig().set(path, 1);
-                saveAndReload(plugin);
+                setConfig(plugin, path, 1);
             }
             String edit = plugin.getConfig().isConfigurationSection(path) ? path + ".price" : path;
             number(plugin, p, m.raw("panel.price-of").replace("<item>", item), edit, 0, 1_000_000, new long[]{1, 10, 100}, () -> adminShop(plugin, p));
@@ -369,9 +367,9 @@ public final class ControlPanel {
         Messages m = msg(plugin);
         String name = m.raw("panel.setting." + s.id());
         if (s.toggle()) {
+            plugin.reloadConfig();
             boolean v = !plugin.getConfig().getBoolean(s.path());
-            plugin.getConfig().set(s.path(), v);
-            saveAndReload(plugin);
+            setConfig(plugin, s.path(), v);
             m.send(p, "panel.saved", "setting", name, "value", m.raw(v ? "panel.on" : "panel.off"));
             back.run();
             return;
@@ -397,14 +395,18 @@ public final class ControlPanel {
     }
 
     private static void setNumber(NanoCorePlugin plugin, Player p, String name, String path, long v, long min, long max, long[] steps, Runnable back) {
-        plugin.getConfig().set(path, v);
-        saveAndReload(plugin);
+        setConfig(plugin, path, v);
         msg(plugin).send(p, "panel.saved", "setting", name, "value", String.valueOf(v));
         number(plugin, p, name, path, min, max, steps, back);
     }
 
-    /** Writes config.yml (comments are kept) and applies it. */
-    static void saveAndReload(NanoCorePlugin plugin) {
+    /**
+     * Changes one value in config.yml and applies it. The file is read again first, so hand edits that weren't
+     * reloaded yet aren't overwritten (comments are kept).
+     */
+    static void setConfig(NanoCorePlugin plugin, String path, Object value) {
+        plugin.reloadConfig();
+        plugin.getConfig().set(path, value);
         plugin.saveConfig();
         plugin.reloadSettings();
     }

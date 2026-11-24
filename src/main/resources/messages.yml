@@ -362,6 +362,7 @@ pshop:
   created: "<green>Shop made! <gray>Set it up in this window. Fill the chest to stock it; only you can open it."
   not-container: "<red>Only a chest, trapped chest or barrel can be a shop."
   already-shop: "<red>That's already a shop."
+  not-yours: "<red>You can only make a shop from a chest or barrel you placed yourself."
   need-item: "<red>Hold the item you want to trade (or put it in the chest first)."
   limit: "<red>You already have <limit> shops. Delete one first."
   protected: "<red>That's <player>'s shop."
@@ -417,6 +418,7 @@ pshop:
   label-out: "<red>Out of stock"
   label-buys: "<aqua>Buying</aqua> <gray>for</gray> <gold><price></gold> <gray>each"
   label-not-buying: "<red>Not buying right now"
+  label-not-selling: "<red>Not selling right now"
   label-owner: "<dark_gray><player>'s shop"
   admin-title: "Shop of <player>"
   admin-tp: "<yellow>Teleport there"
@@ -585,3 +587,5 @@ panel:
 general:
   players-only: "<red>Only players can do that."
   reloaded: "<gray>NanoCore settings reloaded."
+  confirm-yes: "<green>Yes"
+  confirm-no: "<red>No, go back"

@@ -293,6 +293,15 @@ async function shops() {
   await palSees(p0, /That's NanoBot's shop/, 'shop protected from others')
   await sleep(500)
   if (bot.blockAt(SHOP)?.name !== 'chest') throw new Error('shop protection (the chest was broken)')
+
+  // A chest the player didn't place can't become their shop.
+  await expect('/setblock 48 -60 50 chest', /Changed the block/i, 'a chest pal did not place')
+  p0 = palChat.length
+  pal.chat('/pshop new')
+  await palSees(p0, /right-click the chest or barrel/, 'pal picks a chest')
+  p0 = palChat.length
+  await pal.activateBlock(pal.blockAt(new Vec3(48, -60, 50)))
+  await palSees(p0, /only make a shop from a chest or barrel you placed/, 'no shop from someone else\'s chest')
 }
 
 // --- Control panel (/nc): a setting changed from the GUI is saved; players get their own menu ---

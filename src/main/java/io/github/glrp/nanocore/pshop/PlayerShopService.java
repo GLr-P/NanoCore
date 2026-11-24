@@ -9,6 +9,9 @@ import io.github.glrp.nanocore.text.Messages;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.block.TileState;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -74,10 +77,13 @@ public final class PlayerShopService implements Listener {
     private double taxPercent = 2;
     private int pickSeconds = 30;
     private float spin;
+    /** Who placed a chest or barrel, kept in the block itself, so nobody can make a shop of someone else's chest. */
+    private final NamespacedKey placedBy;
 
     public PlayerShopService(NanoCorePlugin plugin, Database db) {
         this.plugin = plugin;
         this.db = db;
+        this.placedBy = new NamespacedKey(plugin, "placed_by");
         db.sync(c -> {
             try (PreparedStatement ps = c.prepareStatement(
                     "SELECT id, owner, world, x, y, z, item, mode, sell_price, buy_price, created FROM pshops ORDER BY id");
@@ -237,6 +243,7 @@ public final class PlayerShopService implements Listener {
         String err = canCreate(p);
         if (err == null && !shopType(b)) err = "pshop.not-container";
         if (err == null && shopFor(b) != null) err = "pshop.already-shop";
+        if (err == null && !p.hasPermission(ADMIN) && !placedBy(b, p.getUniqueId())) err = "pshop.not-yours";
         ItemStack item = p.getInventory().getItemInMainHand();
         if (err == null && item.isEmpty() && b.getState(false) instanceof Container c) {
             for (ItemStack s : c.getInventory().getContents()) {
@@ -308,6 +315,7 @@ public final class PlayerShopService implements Listener {
     // --- trading ---
 
     public ShopTrade.Result buy(Player p, PlayerShop s, int wanted) {
+        if (shops.get(s.id) != s) return new ShopTrade.Result(ShopTrade.Status.NOT_OFFERED, 0, 0, 0, 0);
         Inventory chest = inventory(s);
         if (chest == null) return new ShopTrade.Result(ShopTrade.Status.OUT_OF_STOCK, 0, 0, 0, 0);
         ItemStack[] stock = chest.getContents();
@@ -334,6 +342,7 @@ public final class PlayerShopService implements Listener {
     }
 
     public ShopTrade.Result sell(Player p, PlayerShop s, int wanted) {
+        if (shops.get(s.id) != s) return new ShopTrade.Result(ShopTrade.Status.NOT_OFFERED, 0, 0, 0, 0);
         Inventory chest = inventory(s);
         if (chest == null) return new ShopTrade.Result(ShopTrade.Status.SHOP_FULL, 0, 0, 0, 0);
         ItemStack[] stock = chest.getContents();
@@ -436,7 +445,7 @@ public final class PlayerShopService implements Listener {
         lines.add(msg().rich("pshop.label-item", "item", name));
         if (s.mode.ownerSells()) {
             int stock = stock(s);
-            lines.add(stock > 0 ? msg().msg("pshop.label-sells", "price", eco().format(s.sellPrice), "stock", String.valueOf(stock))
+            lines.add(s.sellPrice <= 0 ? msg().msg("pshop.label-not-selling") : stock > 0 ? msg().msg("pshop.label-sells", "price", eco().format(s.sellPrice), "stock", String.valueOf(stock))
                     : msg().msg("pshop.label-out"));
         }
         if (s.mode.ownerBuys()) {
@@ -519,13 +528,45 @@ public final class PlayerShopService implements Listener {
         Material m = e.getBlockPlaced().getType();
         if (shops.isEmpty() || (m != Material.CHEST && m != Material.TRAPPED_CHEST) || e.getPlayer().hasPermission(ADMIN)) return;
         for (BlockFace f : new BlockFace[]{BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
-            PlayerShop s = shopFor(e.getBlockPlaced().getRelative(f));
+            Block next = e.getBlockPlaced().getRelative(f);
+            if (next.getType() != m) continue; // only a chest of the same kind can join it
+            PlayerShop s = shopFor(next);
             if (s != null && !s.owner.equals(e.getPlayer().getUniqueId())) {
                 e.setCancelled(true);
                 msg().send(e.getPlayer(), "pshop.protected", "player", eco().name(s.owner));
                 return;
             }
         }
+    }
+
+    /** Remembers who placed each chest and barrel (checked when making a shop). */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlaced(BlockPlaceEvent e) {
+        Block b = e.getBlockPlaced();
+        if (!shopType(b)) return;
+        String who = e.getPlayer().getUniqueId().toString();
+        Material type = b.getType();
+        later(() -> {
+            if (b.getType() != type || !(b.getState() instanceof TileState ts)) return;
+            ts.getPersistentDataContainer().set(placedBy, PersistentDataType.STRING, who);
+            ts.update();
+        });
+    }
+
+    /** True if the player placed this chest (both halves of a double chest) or barrel. */
+    private boolean placedBy(Block b, UUID player) {
+        List<Block> parts = new ArrayList<>();
+        if (b.getState(false) instanceof Chest c && c.getInventory().getHolder(false) instanceof DoubleChest dc) {
+            if (dc.getLeftSide() instanceof Chest l) parts.add(l.getBlock());
+            if (dc.getRightSide() instanceof Chest r) parts.add(r.getBlock());
+        }
+        if (parts.isEmpty()) parts.add(b);
+        for (Block part : parts) {
+            if (!(part.getState(false) instanceof TileState ts)) return false;
+            String who = ts.getPersistentDataContainer().get(placedBy, PersistentDataType.STRING);
+            if (!player.toString().equals(who)) return false;
+        }
+        return true;
     }
 
     @EventHandler(ignoreCancelled = true)
