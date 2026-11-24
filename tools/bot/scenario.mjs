@@ -93,7 +93,9 @@ async function first() {
 
   // Nether roof: a player above the roof is sent back down.
   await expect('/execute in minecraft:the_nether run tp NanoBot 8.5 129 8.5', /Teleported/, 'tp to nether roof')
-  await sleep(3000)
+  await sleep(1000)
+  await bot.waitForChunksToLoad()
+  await sleep(2000)
   bot.setControlState('forward', true)
   await sleep(1500)
   bot.setControlState('forward', false)

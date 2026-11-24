@@ -16,7 +16,16 @@ export function createTestBot(username, opts = {}) {
   })
   const write = bot._client.write.bind(bot._client)
   bot._client.write = (name, params) => {
-    if (MOVE_PACKETS.has(name) && params && 'time' in params) params = { ...params, time: 0 }
+    if (MOVE_PACKETS.has(name) && params) {
+      // Mineflayer can produce NaN right after a cross-dimension teleport; a real client never sends that,
+      // and the server kicks for it ("invalid_player_movement"). Drop such packets instead.
+      const nums = ['x', 'y', 'z', 'yaw', 'pitch'].filter((k) => k in params).map((k) => params[k])
+      if (nums.some((n) => !Number.isFinite(n))) {
+        console.log('BOT dropped a movement packet with invalid numbers:', name, JSON.stringify(params))
+        return
+      }
+      if ('time' in params) params = { ...params, time: 0 }
+    }
     if (process.env.DEBUG_PACKETS === '1' && name !== 'keep_alive') {
       console.log('BOT sends', name, JSON.stringify(params, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)).slice(0, 250))
     }
