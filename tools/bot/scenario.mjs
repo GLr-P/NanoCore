@@ -1,18 +1,52 @@
-// Play-tests NanoCore as a real player. Usage: node scenario.mjs <first|second>
-// "first" runs on a fresh server; "second" runs after a restart and checks that everything was saved.
+// Play-tests NanoCore as a real player. Usage: node scenario.mjs <first|second|third>
+// "first" runs on a fresh server; "second" and "third" run after restarts and check that everything was saved.
 // Prints "SCENARIO PASS <phase>" or "SCENARIO FAIL <phase>: <step>" and exits 0/1.
 import { createTestBot } from './lib.mjs'
 import { Vec3 } from 'vec3'
 
 const phase = process.argv[2] ?? 'first'
-const bot = createTestBot('NanoBot')
 const chat = []
-bot.on('messagestr', (t) => {
-  chat.push(t)
-  console.log('  chat:', t)
-})
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// Mineflayer (through ViaBackwards) sometimes gets kicked for "invalid_player_movement" right after the server
+// teleports it mid-move. Real clients don't. During a step marked here such a kick means: rejoin and check the result.
+let quirkStep = null
+let kicked = false
+let bot
+
+function connect() {
+  kicked = false
+  bot = createTestBot('NanoBot')
+  bot.on('messagestr', (t) => {
+    chat.push(t)
+    console.log('  chat:', t)
+  })
+  bot.on('kicked', (r) => {
+    if (quirkStep && /invalid_player_movement/.test(JSON.stringify(r))) {
+      console.log(`STEP ${quirkStep}: bot kicked by the known Mineflayer teleport quirk, rejoining`)
+      kicked = true
+      return
+    }
+    console.log(`SCENARIO FAIL ${phase}: kicked ${JSON.stringify(r)}`)
+    process.exit(1)
+  })
+  bot.on('error', (e) => {
+    if (kicked) return
+    console.log(`SCENARIO FAIL ${phase}: ${e.message}`)
+    process.exit(1)
+  })
+  return new Promise((resolve) => bot.once('spawn', resolve))
+}
+
+/** After a quirk kick: join again (up to twice) and let the server settle the player. */
+async function rejoinIfKicked() {
+  for (let i = 0; i < 2 && kicked; i++) {
+    await sleep(2000)
+    await connect()
+    await sleep(3000)
+  }
+  if (kicked) throw new Error(`${quirkStep} (kicked again after rejoining)`)
+}
 
 /** Sends a command and waits for a chat line matching the pattern. */
 async function expect(command, pattern, step, timeout = 8000) {
@@ -115,13 +149,19 @@ async function first() {
   await sleep(2000)
   await bot.waitForChunksToLoad()
   await sleep(2000)
+  quirkStep = 'nether roof'
   await expect('/tp NanoBot 8.5 129 8.5', /Teleported/, 'tp to nether roof')
-  await sleep(2000)
-  bot.setControlState('forward', true)
+  await sleep(2000) // falling onto the roof is a move above it: the server sends the bot down
+  if (!kicked && bot.entity.position.y > 127) {
+    bot.setControlState('forward', true)
+    await sleep(1500)
+    bot.setControlState('forward', false)
+  }
   await sleep(1500)
-  bot.setControlState('forward', false)
-  await sleep(1500)
-  console.log(`STEP roof: bot at ${bot.entity.position}`)
+  await rejoinIfKicked()
+  quirkStep = null
+  console.log(`STEP roof: bot at ${bot.entity.position} in ${bot.game.dimension}`)
+  if (!String(bot.game.dimension).includes('nether')) throw new Error(`nether roof (bot ended up in ${bot.game.dimension})`)
   if (bot.entity.position.y > 127) throw new Error(`nether roof (still above the roof at y ${bot.entity.position.y})`)
   if (!chat.some((t) => /Nether roof is off limits/.test(t))) throw new Error('nether roof (no message)')
   await expect(`/execute in minecraft:overworld run tp NanoBot ${p.x + 0.5} ${p.y} ${p.z + 0.5}`, /Teleported/, 'tp back')
@@ -324,7 +364,7 @@ async function third() {
   await expect('/balance', /Balance: 1,875 coins/, 'balance after second restart')
 }
 
-bot.once('spawn', async () => {
+connect().then(async () => {
   await sleep(1500)
   try {
     await ({ first, second, third }[phase] ?? first)()
@@ -336,14 +376,6 @@ bot.once('spawn', async () => {
     bot.end()
     setTimeout(() => process.exit(1), 300)
   }
-})
-bot.on('kicked', (r) => {
-  console.log(`SCENARIO FAIL ${phase}: kicked ${JSON.stringify(r)}`)
-  process.exit(1)
-})
-bot.on('error', (e) => {
-  console.log(`SCENARIO FAIL ${phase}: ${e.message}`)
-  process.exit(1)
 })
 setTimeout(() => {
   console.log(`SCENARIO FAIL ${phase}: timed out`)
