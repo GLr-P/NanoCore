@@ -5,15 +5,19 @@ import mineflayer from 'mineflayer'
 const host = process.argv[2] ?? '127.0.0.1'
 const port = Number(process.argv[3] ?? 25599)
 const bot = mineflayer.createBot({ host, port, username: 'NanoBot', version: '26.1', auth: 'offline', physicsEnabled: false })
-// Diagnostics: log the first packets the bot sends (to find what the server rejects).
-let logged = 0
-const write = bot._client.write.bind(bot._client)
-bot._client.write = (name, params) => {
-  if (logged < 15 && !/keep_alive/.test(name)) {
-    logged++
-    console.log('BOT sends', name, JSON.stringify(params, (k, v) => (typeof v === 'bigint' ? v.toString() : v)).slice(0, 250))
+// Known issue: through ViaBackwards the server kicks the bot about 1 s after spawning
+// ("invalid_player_movement"), so the command is sent the moment it spawns.
+// DEBUG_PACKETS=1 logs the first packets the bot sends.
+if (process.env.DEBUG_PACKETS === '1') {
+  let logged = 0
+  const write = bot._client.write.bind(bot._client)
+  bot._client.write = (name, params) => {
+    if (logged < 30 && !/keep_alive/.test(name)) {
+      logged++
+      console.log('BOT sends', name, JSON.stringify(params, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)).slice(0, 250))
+    }
+    return write(name, params)
   }
-  return write(name, params)
 }
 
 const finish = (code, msg) => {

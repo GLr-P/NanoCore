@@ -7,6 +7,7 @@ Paper plugin, Java 25, Maven. Design: `../Information/design.md`. Phases and che
 - Build + unit tests: `mvn -B verify` (no JDK on the laptop: push and let GitHub Actions build, or build on nanoserver in Docker:
   `docker run --rm -u 1000:1000 -v <src>:/src -v ~/build/m2:/m2 -w /src maven:3-eclipse-temurin-25 mvn -B -q -Dmaven.repo.local=/m2/repository verify`)
 - Boot test: `bash tools/smoke-test.sh target/NanoCore-*.jar 26.3` (downloads Paper, starts it with the plugin, runs a console command, checks the log). Runs in CI after the build.
+- Player test: `BOT=1` adds ViaVersion + ViaBackwards and a Mineflayer bot (`tools/bot`, speaks 26.1) that joins as an op and runs a command. **Known issue:** the server kicks the bot for "invalid player movement" about 1 s after spawn; fix before Phase 1 needs bots that move (`DEBUG_PACKETS=1` logs what it sends).
 - CI results: `gh run list -R GLr-P/NanoCore`, `gh run view <id> -R GLr-P/NanoCore --log-failed`. The jar is the `NanoCore` artifact.
 
 ## Rules
