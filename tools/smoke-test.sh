@@ -26,6 +26,7 @@ enforce-whitelist=false
 level-type=minecraft:flat
 generate-structures=false
 spawn-protection=0
+difficulty=peaceful
 view-distance=4
 simulation-distance=4
 server-port=25599

@@ -242,16 +242,16 @@ explore_chunks:
   community: 8000
 visit_biome:
   category: exploring
-  name: "Visit a <variant>"
+  name: "Visit <variant>"
   icon: compass
   medium: 1
   variants:
-    mushroom_fields: { label: "mushroom field", icon: red_mushroom_block, biome: [mushroom_fields] }
-    badlands: { label: "badlands", icon: terracotta, biome: [badlands, eroded_badlands, wooded_badlands] }
-    ice_spikes: { label: "ice spikes biome", icon: packed_ice, biome: [ice_spikes] }
-    bamboo_jungle: { label: "bamboo jungle", icon: bamboo, biome: [bamboo_jungle] }
-    cherry_grove: { label: "cherry grove", icon: cherry_leaves, biome: [cherry_grove] }
-    deep_dark: { label: "deep dark", icon: sculk, biome: [deep_dark] }
+    mushroom_fields: { label: "a mushroom field", icon: red_mushroom_block, biome: [mushroom_fields] }
+    badlands: { label: "the badlands", icon: terracotta, biome: [badlands, eroded_badlands, wooded_badlands] }
+    ice_spikes: { label: "an ice spikes biome", icon: packed_ice, biome: [ice_spikes] }
+    bamboo_jungle: { label: "a bamboo jungle", icon: bamboo, biome: [bamboo_jungle] }
+    cherry_grove: { label: "a cherry grove", icon: cherry_leaves, biome: [cherry_grove] }
+    deep_dark: { label: "the deep dark", icon: sculk, biome: [deep_dark] }
 find_trial_chambers:
   category: exploring
   name: "Find trial chambers"
