@@ -14,6 +14,7 @@ import io.github.glrp.nanocore.economy.Accounts;
 import io.github.glrp.nanocore.economy.EconomyService;
 import io.github.glrp.nanocore.milestone.Milestone;
 import io.github.glrp.nanocore.milestone.MilestoneMenu;
+import io.github.glrp.nanocore.shop.SellMenu;
 import io.github.glrp.nanocore.text.Messages;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -73,6 +74,14 @@ public final class CoreCommands {
         commands.register(pay().build(), "Pays another player");
         commands.register(baltop().build(), "Richest players", List.of("balancetop"));
         commands.register(Commands.literal("milestones").executes(this::milestones).build(), "Shows the server's milestones");
+        commands.register(Commands.literal("sell").executes(ctx -> {
+            if (!(ctx.getSource().getSender() instanceof Player p)) {
+                msg().send(ctx.getSource().getSender(), "general.players-only");
+                return 0;
+            }
+            SellMenu.open(plugin, p);
+            return Command.SINGLE_SUCCESS;
+        }).build(), "Sells rare items to the server");
         commands.register(admin().build(), "NanoCore admin commands", List.of("nc"));
     }
 
@@ -186,6 +195,7 @@ public final class CoreCommands {
                 .then(ecoAdmin())
                 .then(milestoneAdmin())
                 .then(area())
+                .then(shopAdmin())
                 .then(Commands.literal("stats").then(playerArg("player")
                         .executes(ctx -> stats(ctx, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word())
@@ -251,6 +261,36 @@ public final class CoreCommands {
             return 0;
         }
         if (!unlock) msg().send(s, "milestones.locked-admin", "milestone", name);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> shopAdmin() {
+        return Commands.literal("shop")
+                .then(Commands.literal("status").then(playerArg("player").executes(ctx -> shopPlayer(ctx, false))))
+                .then(Commands.literal("reset").then(playerArg("player").executes(ctx -> shopPlayer(ctx, true))))
+                .then(Commands.literal("prices").executes(ctx -> {
+                    CommandSender s = ctx.getSource().getSender();
+                    plugin.shop().prices().values().forEach(p -> msg().send(s, "shop.admin-price-line", "item", p.item(),
+                            "price", eco().format(p.price()), "requires", p.requires() == null ? "" : " (after " + p.requires() + ")"));
+                    return Command.SINGLE_SUCCESS;
+                }));
+    }
+
+    private int shopPlayer(CommandContext<CommandSourceStack> ctx, boolean reset) {
+        CommandSender s = ctx.getSource().getSender();
+        String name = StringArgumentType.getString(ctx, "player");
+        Optional<UUID> id = eco().findByName(name);
+        if (id.isEmpty()) {
+            msg().send(s, "economy.unknown-player", "player", name);
+            return 0;
+        }
+        if (reset) {
+            plugin.shop().resetToday(id.get());
+            msg().send(s, "shop.admin-reset", "player", eco().name(id.get()));
+        } else {
+            msg().send(s, "shop.admin-status", "player", eco().name(id.get()),
+                    "earned", eco().format(plugin.shop().earnedToday(id.get())), "limit", eco().format(plugin.shop().dailyLimit()));
+        }
         return Command.SINGLE_SUCCESS;
     }
 

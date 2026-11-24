@@ -10,6 +10,31 @@ milestones:
   # Players in the Nether above this height are sent back down while the Nether roof is locked.
   nether-roof-y: 127
 
+admin-shop:
+  # The server only buys (/sell), never sells. Most a player can earn from it per day.
+  daily-limit: 150
+  # When the daily limit starts over, 24-hour time.
+  reset-time: "00:00"
+  # Time zone for the reset, like America/Vancouver. Empty = the server's own.
+  timezone: ""
+  # Item id: coins each. Add "requires: <milestone>" to only buy it after that milestone.
+  # Only list things that can't be farmed, automated or duplicated.
+  prices:
+    diamond: 6
+    diamond_block: 54
+    diamond_ore: 6
+    deepslate_diamond_ore: 6
+    echo_shard: 10
+    disc_fragment_5: 4
+    heart_of_the_sea: 40
+    enchanted_golden_apple: 60
+    heavy_core: 80
+    dragon_head: 50
+    ancient_debris: { price: 20, requires: netherite }
+    netherite_scrap: { price: 20, requires: netherite }
+    netherite_ingot: { price: 90, requires: netherite }
+    elytra: { price: 150, requires: elytra }
+
 stats:
   # How often counters are saved to the database, in seconds.
   save-every-seconds: 30

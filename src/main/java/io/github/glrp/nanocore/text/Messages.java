@@ -53,6 +53,21 @@ public final class Messages {
         return msg(key, pairs).decoration(TextDecoration.ITALIC, false);
     }
 
+    /** Like msg, but a value can also be a Component (for example a translated item name). */
+    public Component rich(String key, Object... pairs) {
+        List<TagResolver> list = new ArrayList<>();
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            String name = String.valueOf(pairs[i]);
+            list.add(pairs[i + 1] instanceof Component c ? Placeholder.component(name, c) : Placeholder.unparsed(name, String.valueOf(pairs[i + 1])));
+        }
+        return MM.deserialize(raw(key), TagResolver.resolver(list));
+    }
+
+    /** rich without italics, for item names and lore. */
+    public Component richItem(String key, Object... pairs) {
+        return rich(key, pairs).decoration(TextDecoration.ITALIC, false);
+    }
+
     public void send(Audience to, String key, String... pairs) {
         to.sendMessage(msg(key, pairs));
     }

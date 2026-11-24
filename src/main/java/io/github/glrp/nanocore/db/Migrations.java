@@ -19,6 +19,11 @@ final class Migrations {
                     "CREATE TABLE explored_chunks (uuid TEXT NOT NULL, world TEXT NOT NULL, cx INTEGER NOT NULL, cz INTEGER NOT NULL, PRIMARY KEY (uuid, world, cx, cz))",
                     "CREATE TABLE milestones (id TEXT PRIMARY KEY, unlocked INTEGER NOT NULL, changed_at INTEGER NOT NULL, changed_by TEXT)",
                     "CREATE TABLE areas (name TEXT PRIMARY KEY, world TEXT NOT NULL, kind TEXT NOT NULL, x1 REAL, y1 REAL, z1 REAL, x2 REAL, y2 REAL, z2 REAL, radius REAL)"
+            },
+            // 2: admin shop
+            new String[]{
+                    "CREATE TABLE shop_daily (uuid TEXT NOT NULL, day TEXT NOT NULL, earned INTEGER NOT NULL, PRIMARY KEY (uuid, day))",
+                    "CREATE TABLE shop_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL, uuid TEXT NOT NULL, item TEXT NOT NULL, amount INTEGER NOT NULL, coins INTEGER NOT NULL)"
             }
     );
 

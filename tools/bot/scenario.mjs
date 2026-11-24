@@ -28,6 +28,20 @@ async function expect(command, pattern, step, timeout = 8000) {
   throw new Error(`${step} (no chat line matching ${pattern})`)
 }
 
+/** Runs an action and waits for a chat line matching the pattern. */
+async function expectAfter(action, pattern, step, timeout = 8000) {
+  const start = chat.length
+  console.log(`STEP ${step}`)
+  await action()
+  const until = Date.now() + timeout
+  while (Date.now() < until) {
+    const hit = chat.slice(start).find((t) => pattern.test(t))
+    if (hit) return hit
+    await sleep(100)
+  }
+  throw new Error(`${step} (no chat line matching ${pattern})`)
+}
+
 async function digBelow(step) {
   const target = bot.blockAt(bot.entity.position.offset(0, -1, 0))
   if (!target || target.name === 'air') throw new Error(`${step} (nothing to dig below)`)
@@ -126,10 +140,51 @@ async function first() {
   // Areas
   await expect('/nanocore area circle town 50', /Area town saved/, 'area circle')
   await expect('/nanocore area list', /town: .*radius 50/, 'area list')
+
+  // Admin shop: 30 diamonds hit the 150 limit at 25; dirt isn't bought; elytra waits for its milestone.
+  await expect('/give NanoBot diamond 30', /Gave 30/, 'give diamonds')
+  await expect('/give NanoBot dirt 3', /Gave 3/, 'give dirt for shop')
+  await expect('/give NanoBot elytra 1', /Gave 1/, 'give elytra')
+  await sleep(500)
+  const shopOpened = new Promise((resolve) => bot.once('windowOpen', (w) => resolve(w)))
+  bot.chat('/sell')
+  const shop = await Promise.race([shopOpened, sleep(5000).then(() => null)])
+  if (!shop) throw new Error('sell menu (no window opened)')
+  console.log(`STEP sell menu opened: ${JSON.stringify(shop.title).slice(0, 80)}, inventory from ${shop.inventoryStart}`)
+  await sleep(500)
+  const slotOf = (name) => shop.slots.findIndex((it, i) => i >= shop.inventoryStart && it?.name === name)
+  for (const [name, dest] of [['diamond', 0], ['elytra', 1]]) {
+    const from = slotOf(name)
+    if (from < 0) throw new Error(`sell menu (no ${name} in the bot's inventory)`)
+    console.log(`STEP sell: move ${name} from slot ${from} to ${dest}`)
+    await bot.moveSlotItem(from, dest)
+    await sleep(400)
+  }
+  const dirtSlot = slotOf('dirt')
+  console.log(`STEP sell: shift-click dirt from slot ${dirtSlot}`)
+  await bot.clickWindow(dirtSlot, 0, 1)
+  await sleep(800)
+  const top = shop.slots.slice(0, 36).filter(Boolean).map((it) => `${it.name}x${it.count}`)
+  console.log(`STEP sell: drop area holds ${top.join(', ')}`)
+  if (!top.some((t) => t.startsWith('dirt'))) throw new Error('sell shift-click (dirt did not move into the drop area)')
+  if (shop.slots.slice(36, 45).some((it) => it?.name === 'dirt')) throw new Error('sell shift-click (dirt landed in the button row)')
+  const closed = new Promise((resolve) => bot.once('windowClose', () => resolve(true)))
+  await expectAfter(() => bot.clickWindow(44, 0, 0), /Sold 25 items for 150 coins/, 'sell confirm')
+  await Promise.race([closed, sleep(3000)])
+  await sleep(1000)
+  const count = (name) => bot.inventory.items().filter((i) => i.name === name).reduce((n, i) => n + i.count, 0)
+  console.log(`STEP sell: back in inventory diamond=${count('diamond')} dirt=${count('dirt')} elytra=${count('elytra')}`)
+  if (count('diamond') !== 5) throw new Error(`sell leftovers (expected 5 diamonds back, have ${count('diamond')})`)
+  if (count('dirt') !== 3) throw new Error(`sell leftovers (expected 3 dirt back, have ${count('dirt')})`)
+  if (count('elytra') !== 1) throw new Error('sell leftovers (elytra not returned)')
+  await expect('/balance', /Balance: 300 coins/, 'paid by the shop')
+  await expect('/sell', /sold all you can today/, 'daily limit')
+  await expect('/nanocore shop status NanoBot', /sold 150 coins of 150 coins today/, 'shop status')
 }
 
 async function second() {
-  await expect('/balance', /Balance: 150 coins/, 'balance saved')
+  await expect('/balance', /Balance: 300 coins/, 'balance saved')
+  await expect('/sell', /sold all you can today/, 'shop limit saved')
   await expect('/nanocore milestone list', /nether: unlocked/, 'milestone saved')
   await expect('/nanocore stats NanoBot place.', /place\.dirt=1/, 'stats saved')
   await expect('/nanocore area list', /town: .*radius 50/, 'area saved')
@@ -159,4 +214,4 @@ bot.on('error', (e) => {
 setTimeout(() => {
   console.log(`SCENARIO FAIL ${phase}: timed out`)
   process.exit(1)
-}, 120_000)
+}, 180_000)

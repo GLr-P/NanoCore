@@ -29,5 +29,6 @@ Paper plugin, Java 25, Maven. Design: `../Information/design.md`. Phases and che
 - `blocks/`: `PlacedBlockTracker` (chunk PDC), `BlockKey`
 - `stats/`: `StatKeys` (counter names), `StatsService` (subscribe for quests/events), `StatsListener` (register before the tracker)
 - `milestone/`: `Milestone` enum, `MilestoneService`, `LockListener`, `MilestoneMenu`
+- `shop/`: `SellQuote` + `DailyLimit` (pure rules), `ShopService` (prices from config, today's totals, sales log), `SellMenu` + `SellListener` (/sell window: top 4 rows take items, items left go back on close/stop), `PriceListMenu`
 - `gui/`: `Menu` + `MenuListener`; `area/`: `Area`, `AreaService`; `command/CoreCommands`; `text/Messages`; `config/Settings`
 - `tools/smoke-test.sh`, `tools/bot/`: CI boot and play tests

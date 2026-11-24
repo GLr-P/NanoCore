@@ -9,6 +9,9 @@ import io.github.glrp.nanocore.economy.EconomyService;
 import io.github.glrp.nanocore.gui.MenuListener;
 import io.github.glrp.nanocore.milestone.LockListener;
 import io.github.glrp.nanocore.milestone.MilestoneService;
+import io.github.glrp.nanocore.shop.SellListener;
+import io.github.glrp.nanocore.shop.SellMenu;
+import io.github.glrp.nanocore.shop.ShopService;
 import io.github.glrp.nanocore.stats.StatKeys;
 import io.github.glrp.nanocore.stats.StatsListener;
 import io.github.glrp.nanocore.stats.StatsService;
@@ -30,6 +33,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
     private PlacedBlockTracker placed;
     private MilestoneService milestones;
     private AreaService areas;
+    private ShopService shop;
 
     @Override
     public void onEnable() {
@@ -44,6 +48,9 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         placed = new PlacedBlockTracker(this);
         milestones = new MilestoneService(db, messages);
         areas = new AreaService(db);
+        shop = new ShopService(db, milestones, getLogger());
+        shop.reload(getConfig().getConfigurationSection("admin-shop"));
+        shop.loadToday();
 
         // Money earned/spent feeds the stats (players only; offline players are skipped).
         economy.addListener((id, delta, reason) -> {
@@ -58,6 +65,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         pm.registerEvents(placed, this);
         pm.registerEvents(new LockListener(this, milestones, messages, () -> settings), this);
         pm.registerEvents(new MenuListener(), this);
+        pm.registerEvents(new SellListener(), this);
         pm.registerEvents(this, this);
         statsListener.start();
         long flushTicks = settings.statsSaveSeconds() * 20L;
@@ -81,6 +89,13 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        // Items still in a sell window go back to their owner before the server stops.
+        for (Player p : getServer().getOnlinePlayers()) {
+            if (p.getOpenInventory().getTopInventory().getHolder(false) instanceof SellMenu m) {
+                m.returnItems(); // directly: listeners of a disabled plugin don't run
+                p.closeInventory();
+            }
+        }
         if (stats != null) stats.flush();
         if (placed != null) placed.saveAll(null);
         if (db != null) db.close();
@@ -96,6 +111,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         settings = Settings.from(getConfig());
         messages.reload();
         economy.setCurrencyNames(settings.currencySingular(), settings.currencyPlural());
+        shop.reload(getConfig().getConfigurationSection("admin-shop"));
     }
 
     public Settings settings() {
@@ -120,5 +136,9 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
 
     public AreaService areas() {
         return areas;
+    }
+
+    public ShopService shop() {
+        return shop;
     }
 }
