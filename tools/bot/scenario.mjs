@@ -93,6 +93,7 @@ async function first() {
 
   // Nether roof: a player above the roof is sent back down.
   // Enter the Nether first (on a fresh glass platform), let the bot settle, then go up to the roof.
+  await expect('/execute in minecraft:the_nether run forceload add 0 0 15 15', /[Cc]hunk|force/i, 'load nether chunk', 30000)
   await expect('/execute in minecraft:the_nether run fill 7 99 7 9 99 9 glass', /Successfully filled|blocks? filled/i, 'nether platform')
   await expect('/execute in minecraft:the_nether run fill 7 100 7 9 102 9 air', /Successfully filled|blocks? filled|No blocks/i, 'nether platform air')
   await expect('/execute in minecraft:the_nether run tp NanoBot 8.5 100 8.5', /Teleported/, 'tp into nether')
