@@ -49,7 +49,7 @@ public final class PartsRules {
     public static boolean holderScores(Collection<Integer> teamsInZone) {
         if (teamsInZone.isEmpty()) return false;
         if (teamsInZone.size() == 1) return true;
-        return !teamsInZone.contains(null) && teamsInZone.stream().distinct().count() == 1;
+        return teamsInZone.stream().noneMatch(java.util.Objects::isNull) && teamsInZone.stream().distinct().count() == 1;
     }
 
     /** {@code count} different items picked at random from the pool. */
