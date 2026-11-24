@@ -5,10 +5,16 @@ import mineflayer from 'mineflayer'
 const host = process.argv[2] ?? '127.0.0.1'
 const port = Number(process.argv[3] ?? 25599)
 const bot = mineflayer.createBot({ host, port, username: 'NanoBot', version: '26.1', auth: 'offline', physicsEnabled: false })
-bot.on('physicsTick', () => {})
-bot._client.on('packet', (data, meta) => {
-  if (meta.name === 'position' || meta.name === 'player_position') console.log('BOT position packet:', JSON.stringify(data).slice(0, 300))
-})
+// Diagnostics: log the first packets the bot sends (to find what the server rejects).
+let logged = 0
+const write = bot._client.write.bind(bot._client)
+bot._client.write = (name, params) => {
+  if (logged < 15 && !/keep_alive/.test(name)) {
+    logged++
+    console.log('BOT sends', name, JSON.stringify(params, (k, v) => (typeof v === 'bigint' ? v.toString() : v)).slice(0, 250))
+  }
+  return write(name, params)
+}
 
 const finish = (code, msg) => {
   console.log(msg)
@@ -19,7 +25,7 @@ const timer = setTimeout(() => finish(1, 'BOT FAIL: no answer within 60 s'), 60_
 
 bot.once('spawn', () => {
   console.log('BOT: spawned, sending /nanocore version')
-  setTimeout(() => bot.chat('/nanocore version'), 1500)
+  bot.chat('/nanocore version')
 })
 bot.on('messagestr', (text) => {
   console.log('BOT chat:', text)
