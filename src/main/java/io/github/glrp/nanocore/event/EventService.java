@@ -395,6 +395,11 @@ public final class EventService implements Listener {
         EventDef d = def;
         EventState s = state;
         List<Ranking.Place<UUID>> places = prizes ? ranking() : List.of();
+        // Own things back first, so trophies land in the real inventory instead of the kit.
+        for (UUID id : new ArrayList<>(s.kitted)) {
+            Player p = plugin.getServer().getPlayer(id);
+            if (p != null && kits.restore(p)) msg.send(p, "events.kit-returned");
+        }
         if (prizes) {
             Set<UUID> active = new HashSet<>();
             for (UUID id : s.participants) {
@@ -438,10 +443,6 @@ public final class EventService implements Listener {
             if (d.unlocks() != null) Milestone.byId(d.unlocks()).ifPresent(m -> plugin.milestones().set(m, true, "event " + d.name()));
         } else {
             plugin.getServer().sendMessage(msg.msg("events.cancelled", "event", d.name()));
-        }
-        for (UUID id : new ArrayList<>(s.kitted)) {
-            Player p = plugin.getServer().getPlayer(id);
-            if (p != null && kits.restore(p)) msg.send(p, "events.kit-returned");
         }
         restoreWorld();
         display.clear();
@@ -760,12 +761,14 @@ public final class EventService implements Listener {
 
     private boolean shouldEnd(EventDef.Phase ph, long now) {
         EventDef.End e = ph.end();
-        if (!state.paused() && state.endsAt > 0 && now >= state.endsAt) return true;
+        if (state.paused()) return false; // nothing ends while paused
+        if (state.endsAt > 0 && now >= state.endsAt) return true;
         World w = mainWorld();
         if (state.mcEnd >= 0 && w.getFullTime() >= state.mcEnd) return true;
         if (e.mcTime() >= 0) {
             long tod = w.getTime();
-            boolean crossed = lastTod >= 0 && crossed(lastTod, tod, e.mcTime());
+            // skip-if-past: already past the target when the phase starts (waiting for night, started at night): end right away.
+            boolean crossed = lastTod >= 0 ? crossed(lastTod, tod, e.mcTime()) : e.skipIfPast() && Math.floorMod(tod - e.mcTime(), 24000L) < 10000;
             lastTod = tod;
             if (crossed) return true;
         }

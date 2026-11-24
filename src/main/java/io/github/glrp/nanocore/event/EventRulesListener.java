@@ -76,6 +76,8 @@ public final class EventRulesListener implements Listener {
         Player p = e.getEntity();
         EventDef.Rules r = at(p.getLocation());
         if (r == null) return;
+        EventState st = plugin.events().state();
+        if (st != null && st.kitted.contains(p.getUniqueId())) return; // kit inventories never drop (EventService keeps them)
         if (Boolean.TRUE.equals(r.keepInventory())) {
             e.setKeepInventory(true);
             e.getDrops().clear();

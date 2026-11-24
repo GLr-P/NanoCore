@@ -4,11 +4,21 @@ import io.github.glrp.nanocore.db.Database;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
@@ -27,15 +37,17 @@ import java.util.UUID;
  * all back afterwards. Saved to the database right away, so a crash mid-event loses nothing: the player gets their
  * things back the next time they join.
  */
-public final class KitService {
+public final class KitService implements Listener {
 
     private final Plugin plugin;
     private final Database db;
     private final Map<UUID, String> saved = new HashMap<>();
+    private final NamespacedKey kitKey;
 
     public KitService(Plugin plugin, Database db) {
         this.plugin = plugin;
         this.db = db;
+        this.kitKey = new NamespacedKey(plugin, "kit");
         db.sync(c -> {
             try (PreparedStatement ps = c.prepareStatement("SELECT uuid, data FROM event_kits"); ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) saved.put(UUID.fromString(rs.getString(1)), rs.getString(2));
@@ -93,7 +105,9 @@ public final class KitService {
             }
             while (amount > 0) {
                 int n = Math.min(amount, m.getMaxStackSize());
-                p.getInventory().addItem(ItemStack.of(m, n));
+                ItemStack it = ItemStack.of(m, n);
+                it.editMeta(meta -> meta.getPersistentDataContainer().set(kitKey, PersistentDataType.BYTE, (byte) 1));
+                p.getInventory().addItem(it);
                 amount -= n;
             }
         }
@@ -142,5 +156,42 @@ public final class KitService {
             p.teleportAsync(new Location(w, y.getDouble("x"), y.getDouble("y"), y.getDouble("z"), (float) y.getDouble("yaw"), (float) y.getDouble("pitch")));
         }
         return true;
+    }
+
+    // --- kit items stay with the event: no dropping them, no stashing them, no containers in creative kits ---
+
+    private boolean isKit(ItemStack s) {
+        return s != null && !s.getType().isAir() && s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(kitKey);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDrop(PlayerDropItemEvent e) {
+        if (isKit(e.getItemDrop().getItemStack())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onClick(InventoryClickEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p) || !saved.containsKey(p.getUniqueId())) return;
+        if (e.getView().getTopInventory().getType() == InventoryType.CRAFTING) return; // just their own inventory
+        ItemStack hotbar = e.getHotbarButton() >= 0 ? p.getInventory().getItem(e.getHotbarButton()) : null;
+        if (isKit(e.getCurrentItem()) || isKit(e.getCursor()) || isKit(hotbar)) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDrag(InventoryDragEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p) || !saved.containsKey(p.getUniqueId())) return;
+        if (e.getView().getTopInventory().getType() != InventoryType.CRAFTING && isKit(e.getOldCursor())) e.setCancelled(true);
+    }
+
+    /** Creative kits can make any item, so their players don't open containers. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onOpen(InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p) || !saved.containsKey(p.getUniqueId())) return;
+        if (p.getGameMode() != GameMode.CREATIVE || p.hasPermission("nanocore.admin")) return;
+        if (e.getInventory().getHolder(false) instanceof org.bukkit.block.BlockState
+                || e.getInventory().getHolder(false) instanceof org.bukkit.block.DoubleChest
+                || e.getInventory().getHolder(false) instanceof org.bukkit.entity.Entity) {
+            e.setCancelled(true);
+        }
     }
 }

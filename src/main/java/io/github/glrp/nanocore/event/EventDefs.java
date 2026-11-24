@@ -97,7 +97,7 @@ public final class EventDefs {
         ConfigurationSection e = p.getConfigurationSection("end");
         EventDef.End end;
         if (e == null) {
-            end = new EventDef.End(0, 0, -1, null, false, false);
+            end = new EventDef.End(0, 0, -1, null, false, false, false);
         } else {
             long timer = 0;
             if (e.contains("timer")) {
@@ -114,7 +114,7 @@ public final class EventDefs {
                 warn.accept(where + ": ready must be all, online or a share like 75%; using all");
                 ready = "all";
             }
-            end = new EventDef.End(timer, ticks, time, ready, e.getBoolean("goal", false), e.getBoolean("last-standing", false));
+            end = new EventDef.End(timer, ticks, time, ready, e.getBoolean("goal", false), e.getBoolean("last-standing", false), e.getBoolean("skip-if-past", false));
         }
 
         Map<String, Long> points = new LinkedHashMap<>();

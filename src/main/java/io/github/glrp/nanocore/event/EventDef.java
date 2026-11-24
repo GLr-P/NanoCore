@@ -68,8 +68,9 @@ public record EventDef(
      * @param mcTicks Minecraft time (0 = none; 24,000 per Minecraft day)
      * @param mcTime  end when the time of day reaches this tick (-1 = none; 0 = sunrise, 13000 = night)
      * @param ready   "all", "online" or a share like "75%": when that many participants typed /event done (null = no ready check)
+     * @param skipIfPast with mc-time: end right away if the phase starts less than half a day after that time ("wait for night" started at night)
      */
-    public record End(long timerMs, long mcTicks, long mcTime, String ready, boolean goal, boolean lastStanding) {
+    public record End(long timerMs, long mcTicks, long mcTime, String ready, boolean goal, boolean lastStanding, boolean skipIfPast) {
         public boolean any() {
             return timerMs > 0 || mcTicks > 0 || mcTime >= 0 || ready != null || goal || lastStanding;
         }

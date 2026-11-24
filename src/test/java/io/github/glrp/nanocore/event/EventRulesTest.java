@@ -219,7 +219,7 @@ class EventRulesTest {
 
     static EventDef def(String id, boolean auto, Set<DayOfWeek> days, int weight) {
         return new EventDef(id, id, "clock", List.of(), false, true, 0, 0, null, List.of(), auto, weight, 0, days,
-                List.of(new EventDef.Phase("p", "P", new EventDef.End(60_000, 0, -1, null, false, false), Map.of(), EventDef.Rules.NONE, null, false, 0, 0)),
+                List.of(new EventDef.Phase("p", "P", new EventDef.End(60_000, 0, -1, null, false, false, false), Map.of(), EventDef.Rules.NONE, null, false, 0, 0)),
                 new EventDef.Prizes(List.of(1L), 0, false, "gold_ingot", 0, 0, 0), null, EventDef.Winner.SCORE);
     }
 }

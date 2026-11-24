@@ -14,6 +14,7 @@
 #   phases: run in order. Each can have:
 #     name
 #     end: { timer: 30m, mc-days: 1, mc-time: 23000, ready: all | online | 75%, goal: true, last-standing: true }
+#          (skip-if-past: true with mc-time ends at once if it is already less than half a day past that time)
 #          (whichever comes first; an admin can always skip with /event next)
 #     points: { stat counter: points } (see /nanocore stats <player>; "kill.*" matches every kill)
 #     goal: a total of everyone's points (shown on the sidebar; with end goal: true the phase ends there)
@@ -86,7 +87,7 @@ monster_hunt:
   min-players: 2
   phases:
     - name: "Wait for dark"
-      end: { mc-time: 13000, timer: 15m }
+      end: { mc-time: 13000, skip-if-past: true, timer: 15m }
     - name: "Hunt!"
       end: { mc-time: 23000, timer: 15m }
       goal: 400

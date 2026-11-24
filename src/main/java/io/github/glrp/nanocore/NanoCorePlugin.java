@@ -90,6 +90,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         pm.registerEvents(new SellListener(), this);
         pm.registerEvents(questBoards, this);
         pm.registerEvents(events, this);
+        pm.registerEvents(events.kits(), this);
         pm.registerEvents(new EventRulesListener(this), this);
         pm.registerEvents(this, this);
         statsListener.start();

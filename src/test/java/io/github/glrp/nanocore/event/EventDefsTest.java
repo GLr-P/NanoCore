@@ -46,6 +46,8 @@ class EventDefsTest {
 
         EventDef hunt = all.get("monster_hunt");
         assertEquals(13000, hunt.phase(0).end().mcTime());
+        assertTrue(hunt.phase(0).end().skipIfPast());
+        assertFalse(hunt.phase(1).end().skipIfPast(), "the hunt itself must not end at once when started at night");
         assertEquals(400, hunt.phase(1).goal());
         assertEquals(50, hunt.prizes().goalBonus());
         assertEquals(400, hunt.prizes().goal());
