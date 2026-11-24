@@ -63,7 +63,7 @@ public final class EventEditor implements Listener {
         return YamlConfiguration.loadConfiguration(main).isConfigurationSection(id) ? main : null;
     }
 
-    private static Map<String, Object> toMap(ConfigurationSection s) {
+    static Map<String, Object> toMap(ConfigurationSection s) {
         Map<String, Object> out = new LinkedHashMap<>();
         for (String k : s.getKeys(false)) {
             Object v = s.get(k);

@@ -109,6 +109,7 @@ public final class EventService implements Listener {
         discord.configure(settings.webhookUrl(), settings.webhookName());
         File main = new File(plugin.getDataFolder(), "events.yml");
         if (!main.exists()) plugin.saveResource("events.yml", false);
+        else addNewBundledEvents(main);
         Map<String, EventDef> all = new LinkedHashMap<>(parseFile(main));
         // Extra files, one per custom event if you like: plugins/NanoCore/events/*.yml
         File dir = new File(plugin.getDataFolder(), "events");
@@ -116,6 +117,37 @@ public final class EventService implements Listener {
         if (extra != null) for (File f : extra) all.putAll(parseFile(f));
         defs = all;
         if (state != null && defs.containsKey(state.eventId)) def = defs.get(state.eventId);
+    }
+
+    /**
+     * Events that came with a plugin update are added to an existing events.yml once. An event the owner deleted
+     * isn't added back: every bundled id ever offered is remembered in events-seen.txt.
+     */
+    private void addNewBundledEvents(File main) {
+        var in = plugin.getResource("events.yml");
+        if (in == null) return;
+        YamlConfiguration bundled = YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+        File seenFile = new File(plugin.getDataFolder(), "events-seen.txt");
+        Set<String> seen = new HashSet<>();
+        YamlConfiguration current = YamlConfiguration.loadConfiguration(main);
+        try {
+            if (seenFile.exists()) seen.addAll(java.nio.file.Files.readAllLines(seenFile.toPath()));
+            else seen.addAll(current.getKeys(false)); // first time: what's there now counts as seen
+            List<String> added = new ArrayList<>();
+            for (String id : bundled.getKeys(false)) {
+                if (seen.add(id) && !current.isConfigurationSection(id)) {
+                    current.createSection(id, EventEditor.toMap(bundled.getConfigurationSection(id)));
+                    added.add(id);
+                }
+            }
+            if (!added.isEmpty()) {
+                current.save(main);
+                plugin.getLogger().info("New events added to events.yml: " + String.join(", ", added));
+            }
+            java.nio.file.Files.write(seenFile.toPath(), seen);
+        } catch (java.io.IOException e) {
+            plugin.getLogger().warning("Couldn't add the new bundled events to events.yml: " + e.getMessage());
+        }
     }
 
     private Map<String, EventDef> parseFile(File f) {
