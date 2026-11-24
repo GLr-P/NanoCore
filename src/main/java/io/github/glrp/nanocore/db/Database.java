@@ -56,6 +56,11 @@ public final class Database implements AutoCloseable {
         Migrations.apply(this);
     }
 
+    /** The schema version after all migrations. */
+    public static int schemaVersion() {
+        return Migrations.STEPS.size();
+    }
+
     /** Runs on the DB thread and returns a future. */
     public <T> CompletableFuture<T> submit(SqlFunction<T> fn) {
         CompletableFuture<T> f = new CompletableFuture<>();

@@ -43,7 +43,7 @@ class EconomyServiceTest {
             assertEquals(5, logged);
             // migrations ran once
             long schema = db.sync(c -> Database.queryLong(c, "SELECT CAST(value AS INTEGER) FROM meta WHERE key = 'schema'", -1));
-            assertEquals(1L, schema);
+            assertEquals(Database.schemaVersion(), schema);
         }
     }
 
