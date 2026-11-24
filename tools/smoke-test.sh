@@ -19,6 +19,8 @@ fi
 echo "eula=true" > eula.txt
 cat > server.properties <<EOF
 online-mode=false
+white-list=false
+enforce-whitelist=false
 level-type=minecraft:flat
 generate-structures=false
 spawn-protection=0
