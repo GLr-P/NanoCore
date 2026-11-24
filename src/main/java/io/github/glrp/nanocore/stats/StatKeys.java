@@ -41,6 +41,7 @@ public final class StatKeys {
     public static final String TIME_PLAYED = "time.played"; // seconds
     public static final String MONEY_EARNED = "money.earned";
     public static final String MONEY_SPENT = "money.spent";
+    public static final String QUESTS_DONE = "quest.done";
 
     /** Spawn reasons that don't count as natural (farms built from spawners, eggs, breeding, commands). */
     private static final Set<String> UNNATURAL_SPAWNS = Set.of(

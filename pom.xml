@@ -6,7 +6,7 @@
 
   <groupId>io.github.glrp</groupId>
   <artifactId>nanocore</artifactId>
-  <version>0.3.0</version>
+  <version>0.4.0</version>
   <packaging>jar</packaging>
   <name>NanoCore</name>
   <description>All-in-one Paper plugin: economy, shops, quests, events and milestone locks.</description>

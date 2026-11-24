@@ -189,6 +189,39 @@ public final class StatsService {
         return out;
     }
 
+    /** Like loadOffline, without making the caller wait. Completes on the DB thread. */
+    public java.util.concurrent.CompletableFuture<Map<String, Long>> loadOfflineAsync(UUID id) {
+        Map<String, Long> m = totals.get(id);
+        if (m != null) return java.util.concurrent.CompletableFuture.completedFuture(Map.copyOf(m));
+        flush();
+        return db.submit(c -> {
+            Map<String, Long> out = new HashMap<>();
+            try (PreparedStatement ps = c.prepareStatement("SELECT stat, value FROM stats WHERE uuid = ?")) {
+                ps.setString(1, id.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) out.put(rs.getString(1), rs.getLong(2));
+                }
+            }
+            return out;
+        });
+    }
+
+    /** The highest values of one counter (saved first, so it includes the latest). Completes on the DB thread. */
+    public java.util.concurrent.CompletableFuture<List<Map.Entry<UUID, Long>>> top(String stat, int limit) {
+        flush();
+        return db.submit(c -> {
+            List<Map.Entry<UUID, Long>> out = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement("SELECT uuid, value FROM stats WHERE stat = ? AND value > 0 ORDER BY value DESC LIMIT ?")) {
+                ps.setString(1, stat);
+                ps.setInt(2, limit);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) out.add(Map.entry(UUID.fromString(rs.getString(1)), rs.getLong(2)));
+                }
+            }
+            return out;
+        });
+    }
+
     public Set<UUID> loadedPlayers() {
         return new HashSet<>(totals.keySet());
     }

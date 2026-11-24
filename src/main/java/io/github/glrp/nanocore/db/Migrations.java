@@ -24,6 +24,13 @@ final class Migrations {
             new String[]{
                     "CREATE TABLE shop_daily (uuid TEXT NOT NULL, day TEXT NOT NULL, earned INTEGER NOT NULL, PRIMARY KEY (uuid, day))",
                     "CREATE TABLE shop_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL, uuid TEXT NOT NULL, item TEXT NOT NULL, amount INTEGER NOT NULL, coins INTEGER NOT NULL)"
+            },
+            // 3: quests
+            new String[]{
+                    "CREATE TABLE quest_board (id TEXT PRIMARY KEY, period TEXT NOT NULL, slot INTEGER NOT NULL, tier TEXT NOT NULL, template TEXT NOT NULL, variant TEXT, amount INTEGER NOT NULL, reward INTEGER NOT NULL, owner TEXT, replaces TEXT)",
+                    "CREATE TABLE quest_progress (uuid TEXT NOT NULL, quest TEXT NOT NULL, state TEXT NOT NULL, progress INTEGER NOT NULL, PRIMARY KEY (uuid, quest))",
+                    "CREATE TABLE quest_places (kind TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, PRIMARY KEY (kind, world, x, y, z))",
+                    "CREATE TABLE quest_backlog (id INTEGER PRIMARY KEY AUTOINCREMENT, item BLOB NOT NULL)"
             }
     );
 

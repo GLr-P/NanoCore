@@ -35,6 +35,31 @@ admin-shop:
     netherite_ingot: { price: 90, requires: netherite }
     elytra: { price: 150, requires: elytra }
 
+quests:
+  # Quests on the daily board per difficulty (at most 7 each). The kinds of quests are in quests.yml.
+  board: { easy: 5, medium: 4, hard: 2 }
+  # Coins per difficulty. Inside a range, quests that ask for more pay more.
+  rewards: { easy: 40-80, medium: 120-200, hard: 300-500 }
+  # Quests a player can have going at once.
+  max-active: 3
+  # Coins to swap a quest on your board for a different one (0 = free).
+  reroll-cost: 25
+  # When the daily board changes, 24-hour time. Quests done but not claimed are paid out then.
+  refresh-time: "06:00"
+  # Time zone for the refresh, like America/Vancouver. Empty = the server's own.
+  timezone: ""
+  community:
+    # The weekly server-wide quest: this pot is split by how much each player helped.
+    pot: 1500
+    # Everyone who helped gets at least this.
+    min-share: 25
+    # The day the community quest changes (at refresh-time).
+    day: monday
+  # Height of the floating label above each board block.
+  label-height: 1.8
+  # /quests counts as standing at the board within this many blocks of one.
+  board-reach: 6
+
 stats:
   # How often counters are saved to the database, in seconds.
   save-every-seconds: 30

@@ -1,0 +1,371 @@
+# Quest kinds the board picks from. Reload with /nanocore reload (the board itself changes at the next refresh).
+#
+# Each entry:
+#   category:  quests of the same category are spread out (no two on one board when there's a choice)
+#   name:      shown on the board; "<variant>" is replaced by the variant's label
+#   icon:      item shown in the menu
+#   count:     stat counters that add progress (see /nanocore stats <player>), or
+#   deliver:   an item to hand in at the board (it goes into the town storehouse), or
+#   biome / structure: places to visit (biome or structure ids)
+#   easy / medium / hard: how many are asked for (a range picks a random amount; the reward scales with it)
+#   community: amount for the server-wide weekly quest (the whole server works on it together)
+#   requires:  milestone that must be unlocked first (nether, end, elytra, netherite...)
+#   scale:     raw units per shown unit (distances are counted in centimetres, so 100 = blocks)
+#   weight:    how often it's picked compared to the others (default 1)
+#   variants:  kinds of the same quest; one is picked each time (label, icon and their own count/deliver/biome)
+
+# --- Mining ---
+mine_stone:
+  category: mining
+  name: "Mine natural stone"
+  icon: stone
+  count: [mine.stone, mine.deepslate, mine.andesite, mine.diorite, mine.granite, mine.tuff]
+  easy: 400-600
+  medium: 1200-1800
+  hard: 3500-4500
+  community: 40000
+mine_coal:
+  category: mining
+  name: "Mine coal ore"
+  icon: coal_ore
+  count: [mine.coal_ore, mine.deepslate_coal_ore]
+  easy: 40-56
+mine_iron:
+  category: mining
+  name: "Mine iron ore"
+  icon: iron_ore
+  count: [mine.iron_ore, mine.deepslate_iron_ore]
+  easy: 28-36
+  medium: 80-110
+mine_gold:
+  category: mining
+  name: "Mine gold ore"
+  icon: gold_ore
+  count: [mine.gold_ore, mine.deepslate_gold_ore]
+  medium: 20-28
+mine_diamonds:
+  category: mining
+  name: "Mine diamond ore"
+  icon: diamond_ore
+  count: [mine.diamond_ore, mine.deepslate_diamond_ore]
+  medium: 4-5
+  hard: 9-12
+mine_debris:
+  category: mining
+  name: "Mine ancient debris"
+  icon: ancient_debris
+  count: [mine.ancient_debris]
+  hard: 4
+  requires: nether
+
+# --- Digging ---
+dig_dirt:
+  category: digging
+  name: "Dig dirt, sand or gravel"
+  icon: dirt
+  count: [mine.dirt, mine.grass_block, mine.coarse_dirt, mine.rooted_dirt, mine.podzol, mine.mycelium, mine.mud,
+          mine.sand, mine.red_sand, mine.gravel]
+  easy: 350-450
+  medium: 1000-1400
+  community: 30000
+
+# --- Woodcutting ---
+chop_logs:
+  category: woodcutting
+  name: "Chop <variant> logs"
+  icon: oak_log
+  easy: 56-72
+  medium: 170-210
+  hard: 450-550
+  variants:
+    oak: { label: "oak", icon: oak_log, count: [mine.oak_log, mine.oak_wood] }
+    spruce: { label: "spruce", icon: spruce_log, count: [mine.spruce_log, mine.spruce_wood] }
+    birch: { label: "birch", icon: birch_log, count: [mine.birch_log, mine.birch_wood] }
+    jungle: { label: "jungle", icon: jungle_log, count: [mine.jungle_log, mine.jungle_wood] }
+    acacia: { label: "acacia", icon: acacia_log, count: [mine.acacia_log, mine.acacia_wood] }
+    dark_oak: { label: "dark oak", icon: dark_oak_log, count: [mine.dark_oak_log, mine.dark_oak_wood] }
+    cherry: { label: "cherry", icon: cherry_log, count: [mine.cherry_log, mine.cherry_wood] }
+    mangrove: { label: "mangrove", icon: mangrove_log, count: [mine.mangrove_log, mine.mangrove_wood] }
+
+# --- Farming ---
+harvest_crops:
+  category: farming
+  name: "Harvest fully grown crops"
+  icon: wheat
+  count: [harvest.total]
+  easy: 110-150
+  medium: 340-420
+  community: 8000
+
+# --- Animals ---
+breed_animals:
+  category: animals
+  name: "Breed animals"
+  icon: wheat_seeds
+  count: [breed.total]
+  easy: 10
+  medium: 30
+shear_sheep:
+  category: animals
+  name: "Shear sheep"
+  icon: shears
+  count: [shear.sheep]
+  easy: 20
+tame_pets:
+  category: animals
+  name: "Tame wolves or cats"
+  icon: bone
+  count: [tame.wolf, tame.cat]
+  easy: 2
+
+# --- Monsters (only naturally spawned mobs count) ---
+kill_zombies:
+  category: monsters
+  name: "Defeat zombies"
+  icon: rotten_flesh
+  count: [kill.zombie, kill.zombie_villager, kill.husk]
+  easy: 20-30
+  medium: 65-85
+  community: 1500
+kill_skeletons:
+  category: monsters
+  name: "Defeat skeletons"
+  icon: bone
+  count: [kill.skeleton, kill.stray, kill.bogged]
+  easy: 16-24
+  medium: 50-70
+kill_creepers:
+  category: monsters
+  name: "Defeat creepers"
+  icon: gunpowder
+  count: [kill.creeper]
+  easy: 8-12
+  medium: 25-35
+kill_spiders:
+  category: monsters
+  name: "Defeat spiders"
+  icon: string
+  count: [kill.spider, kill.cave_spider]
+  easy: 20
+kill_endermen:
+  category: monsters
+  name: "Defeat endermen"
+  icon: ender_pearl
+  count: [kill.enderman]
+  medium: 10
+  hard: 25
+kill_witches:
+  category: monsters
+  name: "Defeat witches"
+  icon: glass_bottle
+  count: [kill.witch]
+  medium: 5
+kill_phantoms:
+  category: monsters
+  name: "Defeat phantoms"
+  icon: phantom_membrane
+  count: [kill.phantom]
+  medium: 10
+kill_drowned:
+  category: monsters
+  name: "Defeat drowned"
+  icon: trident
+  count: [kill.drowned]
+  easy: 20
+kill_slimes:
+  category: monsters
+  name: "Defeat slimes"
+  icon: slime_ball
+  count: [kill.slime]
+  easy: 20
+kill_blazes:
+  category: monsters
+  name: "Defeat blazes"
+  icon: blaze_rod
+  count: [kill.blaze]
+  medium: 15
+  requires: nether
+kill_wither_skeletons:
+  category: monsters
+  name: "Defeat wither skeletons"
+  icon: coal
+  count: [kill.wither_skeleton]
+  hard: 10
+  requires: nether
+kill_ghasts:
+  category: monsters
+  name: "Defeat ghasts"
+  icon: ghast_tear
+  count: [kill.ghast]
+  medium: 3
+  requires: nether
+kill_magma_cubes:
+  category: monsters
+  name: "Defeat magma cubes"
+  icon: magma_cream
+  count: [kill.magma_cube]
+  medium: 20
+  requires: nether
+kill_shulkers:
+  category: monsters
+  name: "Defeat shulkers"
+  icon: shulker_shell
+  count: [kill.shulker]
+  hard: 10
+  requires: end
+
+# --- Fishing ---
+catch_fish:
+  category: fishing
+  name: "Catch fish"
+  icon: cod
+  count: [fish.fish]
+  easy: 12-18
+  medium: 35-45
+  community: 600
+catch_treasure:
+  category: fishing
+  name: "Fish up treasure"
+  icon: name_tag
+  count: [fish.treasure]
+  medium: 3
+
+# --- Exploring ---
+explore_chunks:
+  category: exploring
+  name: "Explore new chunks"
+  icon: filled_map
+  count: [explore.chunks]
+  easy: 130-170
+  medium: 350-450
+  hard: 900-1100
+  community: 8000
+visit_biome:
+  category: exploring
+  name: "Visit a <variant>"
+  icon: compass
+  medium: 1
+  variants:
+    mushroom_fields: { label: "mushroom field", icon: red_mushroom_block, biome: [mushroom_fields] }
+    badlands: { label: "badlands", icon: terracotta, biome: [badlands, eroded_badlands, wooded_badlands] }
+    ice_spikes: { label: "ice spikes biome", icon: packed_ice, biome: [ice_spikes] }
+    bamboo_jungle: { label: "bamboo jungle", icon: bamboo, biome: [bamboo_jungle] }
+    cherry_grove: { label: "cherry grove", icon: cherry_leaves, biome: [cherry_grove] }
+    deep_dark: { label: "deep dark", icon: sculk, biome: [deep_dark] }
+find_trial_chambers:
+  category: exploring
+  name: "Find trial chambers"
+  icon: trial_key
+  structure: [trial_chambers]
+  medium: 1
+find_structure:
+  category: exploring
+  name: "Find <variant>"
+  icon: compass
+  hard: 1
+  variants:
+    monument: { label: "an ocean monument", icon: prismarine, structure: [monument] }
+    ancient_city: { label: "an ancient city", icon: sculk_shrieker, structure: [ancient_city] }
+    mansion: { label: "a woodland mansion", icon: dark_oak_planks, structure: [mansion] }
+
+# --- Crafting ---
+smelt_items:
+  category: crafting
+  name: "Smelt items"
+  icon: furnace
+  count: [smelt.total]
+  easy: 110-150
+  medium: 450-550
+brew_potions:
+  category: crafting
+  name: "Brew potions"
+  icon: brewing_stand
+  count: [brew.total]
+  medium: 6
+enchant_items:
+  category: crafting
+  name: "Enchant items"
+  icon: enchanting_table
+  count: [enchant.total]
+  medium: 3
+trade_villagers:
+  category: crafting
+  name: "Trade with villagers"
+  icon: emerald
+  count: [trade.total]
+  easy: 10
+  medium: 30
+
+# --- Delivery (hand in at the board; it goes into the town storehouse) ---
+deliver_cobblestone:
+  category: delivery
+  name: "Deliver cobblestone"
+  icon: cobblestone
+  deliver: cobblestone
+  easy: 256
+  community: 5000
+deliver_logs:
+  category: delivery
+  name: "Deliver <variant> logs"
+  icon: oak_log
+  delivery: true
+  easy: 64
+  variants:
+    oak: { label: "oak", icon: oak_log, deliver: oak_log }
+    spruce: { label: "spruce", icon: spruce_log, deliver: spruce_log }
+    birch: { label: "birch", icon: birch_log, deliver: birch_log }
+deliver_bread:
+  category: delivery
+  name: "Deliver bread"
+  icon: bread
+  deliver: bread
+  easy: 32
+deliver_glass:
+  category: delivery
+  name: "Deliver glass"
+  icon: glass
+  deliver: glass
+  easy: 64
+deliver_lanterns:
+  category: delivery
+  name: "Deliver lanterns"
+  icon: lantern
+  deliver: lantern
+  medium: 16
+deliver_bricks:
+  category: delivery
+  name: "Deliver bricks"
+  icon: bricks
+  deliver: bricks
+  medium: 64
+deliver_bookshelves:
+  category: delivery
+  name: "Deliver bookshelves"
+  icon: bookshelf
+  deliver: bookshelf
+  medium: 8
+
+# --- Travel (distances in blocks) ---
+ride_far:
+  category: travel
+  name: "Ride a boat, horse or minecart (blocks)"
+  icon: oak_boat
+  count: [move.boat, move.horse, move.minecart]
+  scale: 100
+  medium: 1800-2200
+swim_far:
+  category: travel
+  name: "Swim (blocks)"
+  icon: water_bucket
+  count: [move.swim]
+  scale: 100
+  easy: 400-600
+  medium: 900-1100
+glide_far:
+  category: travel
+  name: "Glide with an elytra (blocks)"
+  icon: elytra
+  count: [move.elytra]
+  scale: 100
+  hard: 9000-11000
+  requires: elytra

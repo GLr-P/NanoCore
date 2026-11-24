@@ -181,10 +181,118 @@ async function first() {
   await expect('/balance', /Balance: 300 coins/, 'paid by the shop')
   await expect('/sell', /sold all you can today/, 'daily limit')
   await expect('/nanocore shop status NanoBot', /sold 150 coins of 150 coins today/, 'shop status')
+
+  await quests(count)
+}
+
+// --- Quests: a board block and storehouse chest on the flat world (grass at y -61, standing at -60) ---
+const BOARD = new Vec3(42, -60, 45)
+
+async function waitChat(start, pattern, step, timeout = 8000) {
+  const until = Date.now() + timeout
+  while (Date.now() < until) {
+    const hit = chat.slice(start).find((t) => pattern.test(t))
+    if (hit) return hit
+    await sleep(100)
+  }
+  throw new Error(`${step} (no chat line matching ${pattern})`)
+}
+
+async function windowAfter(action, step) {
+  const opened = new Promise((resolve) => bot.once('windowOpen', (w) => resolve(w)))
+  await action()
+  const w = await Promise.race([opened, sleep(5000).then(() => null)])
+  if (!w) throw new Error(`${step} (no window opened)`)
+  await sleep(300)
+  return w
+}
+
+const openBoard = (step) => windowAfter(() => bot.activateBlock(bot.blockAt(BOARD)), step)
+const click = (slot, step) => {
+  console.log(`STEP ${step}: click slot ${slot}`)
+  return windowAfter(() => bot.clickWindow(slot, 0, 0), step)
+}
+
+/** Opens quest n's page from the board (quests 1-5 are slots 10-14), clicks a button, waits for a chat line. */
+async function questButton(slot, button, pattern, step) {
+  await openBoard(`${step}: open board`)
+  await click(slot, `${step}: quest page`)
+  const start = chat.length
+  const w = await click(button, step)
+  await waitChat(start, pattern, step)
+  bot.closeWindow(w)
+  await sleep(300)
+}
+
+async function labelThere(step) {
+  await sleep(6000) // labels are placed every 5 s
+  await expect(`/execute positioned 42.5 -58.2 45.5 if entity @e[type=minecraft:text_display,distance=..1]`, /Test passed/, step)
+}
+
+async function quests(count) {
+  await expect('/tp NanoBot 42.5 -60 42.5', /Teleported/, 'tp to quest area')
+  await sleep(1500)
+  await bot.waitForChunksToLoad()
+  const ground = bot.blockAt(new Vec3(42, -61, 42))?.name
+  if (ground !== 'grass_block') throw new Error(`quest area (expected grass at y -61, found ${ground})`)
+  await expect(`/setblock ${BOARD.x} ${BOARD.y} ${BOARD.z} bookshelf`, /Changed the block/i, 'board block')
+  await expect('/setblock 44 -60 45 chest', /Changed the block/i, 'storehouse chest')
+  await expect(`/quests board set ${BOARD.x} ${BOARD.y} ${BOARD.z}`, /Quest board set at 42, -60, 45/, 'board set')
+  await expect('/quests storehouse set 44 -60 45', /storehouse set at 44, -60, 45/, 'storehouse set')
+  await expect('/quests list', /#11 .*\(hard, /, 'board has 11 daily quests')
+  await expect('/quests set 1 dig_dirt 3', /#1 Dig dirt, sand or gravel x3 \(easy, dig_dirt\) 40 coins/, 'set quest 1')
+  await expect('/quests set 2 deliver_cobblestone 10', /#2 Deliver cobblestone x10 \(easy, deliver_cobblestone\) 60 coins/, 'set quest 2')
+  await expect('/quests set 12 dig_dirt 3', /#12 Dig dirt, sand or gravel x3 \(community, dig_dirt\) 1,500 coins/, 'set community quest')
+  await labelThere('board label')
+
+  const board = await openBoard('open board')
+  console.log(`STEP board: ${JSON.stringify(board.title).slice(0, 60)}, slot 10 ${board.slots[10]?.name}, 11 ${board.slots[11]?.name}, 40 ${board.slots[40]?.name}`)
+  if (board.slots[10]?.name !== 'dirt' || board.slots[11]?.name !== 'cobblestone') throw new Error('board layout (quests 1 and 2 not in slots 10 and 11)')
+  bot.closeWindow(board)
+  await sleep(300)
+
+  await questButton(10, 11, /Quest taken: Dig dirt/, 'take quest 1')
+  await questButton(11, 11, /Quest taken: Deliver cobblestone/, 'take quest 2')
+  await questButton(12, 15, /Swapped .* for a new quest \(25 coins\)/, 'reroll quest 3')
+
+  // Three natural blocks finish quest 1 and the community quest.
+  const start = chat.length
+  for (const [x, z] of [[43, 42], [41, 42], [42, 41]]) {
+    const b = bot.blockAt(new Vec3(x, -61, z))
+    console.log(`STEP dig for quest: ${b?.name} at ${b?.position}`)
+    await bot.dig(b, true)
+    await sleep(300)
+  }
+  await waitChat(start, /Quest complete: Dig dirt, sand or gravel/, 'quest 1 done')
+  await waitChat(start, /Community quest done!/, 'community quest done')
+  await waitChat(start, /share of the community quest: 1,500 coins/, 'community share')
+
+  // Delivery: 10 of 12 cobblestone go into the storehouse.
+  await expect('/give NanoBot cobblestone 12', /Gave 12/, 'give cobblestone')
+  await sleep(500)
+  await questButton(11, 11, /Handed in 10 items for Deliver cobblestone/, 'hand in')
+  await sleep(500)
+  if (count('cobblestone') !== 2) throw new Error(`hand in (expected 2 cobblestone left, have ${count('cobblestone')})`)
+  const stored = await expect('/data get block 44 -60 45 Items', /cobblestone/, 'storehouse holds the delivery')
+  if (!/count: 10\b/.test(stored)) throw new Error(`storehouse (expected 10 cobblestone: ${stored})`)
+
+  await questButton(10, 13, /Claimed 40 coins for Dig dirt/, 'claim quest 1')
+  await questButton(11, 13, /Claimed 60 coins for Deliver cobblestone/, 'claim quest 2')
+  await expect('/balance', /Balance: 1,875 coins/, 'quest money')
+  await expect('/quests status NanoBot', /#1 dig_dirt=claimed 3\/3 #2 deliver_cobblestone=claimed 10\/10 #3 \S+\(reroll\)=open.*community dig_dirt 3\/3 yours 3 done/, 'quest status')
+  await expect('/stats', /Quests done: 2/, 'player stats')
+  await expect('/stats top quests', /1\. NanoBot 2/, 'stats leaderboard')
+}
+
+async function questsSaved() {
+  await expect('/quests status NanoBot', /#1 dig_dirt=claimed 3\/3 #2 deliver_cobblestone=claimed 10\/10 #3 \S+\(reroll\)=open.*community dig_dirt 3\/3 yours 3 done/, 'quests saved')
+  await expect('/quests list', /storehouse: world 44 -60 45/, 'board and storehouse saved')
+  await labelThere('board label after restart')
 }
 
 async function second() {
-  await expect('/balance', /Balance: 300 coins/, 'balance saved')
+  await expect('/balance', /Balance: 1,875 coins/, 'balance saved')
+  await questsSaved()
   await expect('/sell', /sold all you can today/, 'shop limit saved')
   await expect('/nanocore milestone list', /nether: unlocked/, 'milestone saved')
   await expect('/nanocore stats NanoBot place.', /place\.dirt=1/, 'stats saved')
@@ -215,4 +323,4 @@ bot.on('error', (e) => {
 setTimeout(() => {
   console.log(`SCENARIO FAIL ${phase}: timed out`)
   process.exit(1)
-}, 180_000)
+}, 300_000)
