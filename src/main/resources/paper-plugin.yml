@@ -6,9 +6,11 @@ api-version: '26.3'
 website: https://github.com/GLr-P/NanoCore
 dependencies:
   server:
-    VaultUnlocked:
+    # VaultUnlocked registers itself as "Vault".
+    Vault:
       load: BEFORE
       required: false
+      join-classpath: true
     BlueMap:
       load: BEFORE
       required: false

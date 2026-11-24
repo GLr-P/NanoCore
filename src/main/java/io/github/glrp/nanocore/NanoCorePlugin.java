@@ -63,8 +63,12 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         long flushTicks = settings.statsSaveSeconds() * 20L;
         getServer().getScheduler().runTaskTimer(this, stats::flush, flushTicks, flushTicks);
 
-        if (pm.getPlugin("VaultUnlocked") != null || pm.getPlugin("Vault") != null) {
-            io.github.glrp.nanocore.economy.VaultHook.register(this, economy);
+        if (pm.getPlugin("Vault") != null) {
+            try {
+                io.github.glrp.nanocore.economy.VaultHook.register(this, economy);
+            } catch (LinkageError | RuntimeException e) {
+                getLogger().warning("Vault is installed but its economy API couldn't be used: " + e);
+            }
         }
 
         CoreCommands commands = new CoreCommands(this);
