@@ -130,7 +130,7 @@ public final class QuestCommands {
         for (int i = 0; i < board.size(); i++) line(s, i + 1, board.get(i));
         if (qs.community() != null) line(s, board.size() + 1, qs.community());
         msg().send(s, "quests.admin-places", "boards", String.valueOf(plugin.questBoards().boards().size()),
-                "storehouse", plugin.questBoards().storehouse() == null ? "not set" : plugin.questBoards().storehouse().toString(),
+                "storehouse", plugin.questBoards().storehouse() == null ? msg().raw("quests.storehouse-not-set") : plugin.questBoards().storehouse().toString(),
                 "backlog", String.valueOf(plugin.questBoards().backlogSize()));
         return Command.SINGLE_SUCCESS;
     }
@@ -184,7 +184,7 @@ public final class QuestCommands {
         var qs = plugin.quests();
         PlayerQuests pq = qs.player(id.get());
         List<Quest> view = qs.view(id.get());
-        StringBuilder out = new StringBuilder("Quests for " + plugin.economy().name(id.get()) + ":");
+        StringBuilder out = new StringBuilder(msg().raw("quests.admin-status-header").replace("<player>", plugin.economy().name(id.get())));
         for (int i = 0; i < view.size(); i++) {
             Quest q = view.get(i);
             PlayerQuests.State st = pq.state(q.id());

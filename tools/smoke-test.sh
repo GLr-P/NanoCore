@@ -84,6 +84,14 @@ if [ "${BOT:-0}" = 1 ]; then
     node "$TOOLS/bot/scenario.mjs" second || fail=1
     stop_server
   fi
+  if [ $fail -eq 0 ]; then
+    echo "----- restart -----"
+    start_server 2
+    echo "op NanoBot" >&3   # the second phase de-opped it to test the storehouse lock
+    sleep 1
+    node "$TOOLS/bot/scenario.mjs" third || fail=1
+    stop_server
+  fi
 else
   stop_server
 fi

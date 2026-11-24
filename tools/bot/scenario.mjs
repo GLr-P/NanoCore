@@ -291,19 +291,43 @@ async function questsSaved() {
   await labelThere('board label after restart')
 }
 
+/** An admin refresh on the same day gives a new board; nothing of the old progress may stick to it. */
+async function freshBoard() {
+  await expect('/quests refresh', /New quests are up/, 'admin refresh')
+  const s = await expect('/quests status NanoBot', /Quests for NanoBot:/, 'status after refresh')
+  if (/=claimed|=active|=done|\(reroll\)/.test(s.split('|')[0])) throw new Error(`status after refresh (old progress kept: ${s})`)
+}
+
+async function storehouseLocked() {
+  await expect('/deop NanoBot', /no longer a server operator/, 'deop')
+  await sleep(500)
+  const start = chat.length
+  console.log('STEP open the storehouse as a player')
+  await bot.activateBlock(bot.blockAt(new Vec3(44, -60, 45)))
+  await waitChat(start, /That's the town storehouse/, 'storehouse locked for players')
+}
+
 async function second() {
   await expect('/balance', /Balance: 1,875 coins/, 'balance saved')
   await questsSaved()
+  await freshBoard()
   await expect('/sell', /sold all you can today/, 'shop limit saved')
   await expect('/nanocore milestone list', /nether: unlocked/, 'milestone saved')
   await expect('/nanocore stats NanoBot place.', /place\.dirt=1/, 'stats saved')
   await expect('/nanocore area list', /town: .*radius 50/, 'area saved')
+  await storehouseLocked()
+}
+
+async function third() {
+  const s = await expect('/quests status NanoBot', /Quests for NanoBot:/, 'board after restart')
+  if (/=claimed|=active|=done|\(reroll\)/.test(s.split('|')[0])) throw new Error(`old progress came back after a restart: ${s}`)
+  await expect('/balance', /Balance: 1,875 coins/, 'balance after second restart')
 }
 
 bot.once('spawn', async () => {
   await sleep(1500)
   try {
-    await (phase === 'first' ? first() : second())
+    await ({ first, second, third }[phase] ?? first)()
     console.log(`SCENARIO PASS ${phase}`)
     bot.end()
     setTimeout(() => process.exit(0), 300)

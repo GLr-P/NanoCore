@@ -4,6 +4,7 @@ import io.github.glrp.nanocore.NanoCorePlugin;
 import io.github.glrp.nanocore.db.Database;
 import io.github.glrp.nanocore.economy.Accounts;
 import io.github.glrp.nanocore.milestone.Milestone;
+import io.github.glrp.nanocore.stats.Places;
 import io.github.glrp.nanocore.stats.StatKeys;
 import io.github.glrp.nanocore.text.Messages;
 import net.kyori.adventure.title.Title;
@@ -37,10 +38,6 @@ import java.util.UUID;
  * Everything lives in memory on the server thread; changes are written to the database in the background.
  */
 public final class QuestService {
-
-    /** Shown for a saved quest whose template was removed from quests.yml. */
-    private static final QuestTemplate.Resolved UNKNOWN =
-            new QuestTemplate.Resolved("Unknown quest", "barrier", QuestTemplate.Objective.COUNT, List.of(), 1, "unknown");
 
     public enum Result { OK, ALREADY, FULL, NOT_AVAILABLE, NOT_ENOUGH, NONE }
 
@@ -195,7 +192,8 @@ public final class QuestService {
         }
         board.clear();
         personal.clear();
-        board.addAll(QuestGenerator.dailyBoard(templates.values(), settings.counts(), settings.rewards(), this::unlocked, rng, newDay));
+        // Ids carry a fresh tag, so a second board on the same day (admin refresh) never inherits old progress.
+        board.addAll(QuestGenerator.dailyBoard(templates.values(), settings.counts(), settings.rewards(), this::unlocked, rng, newDay + "/" + tag()));
         day = newDay;
         List<Quest> snapshot = List.copyOf(board);
         db.run(c -> {
@@ -221,7 +219,7 @@ public final class QuestService {
     public void refreshWeekly(String newWeek) {
         if (community != null && !communityDone) settleCommunity();
         contributions.clear();
-        community = QuestGenerator.communityQuest(templates.values(), this::unlocked, rng, newWeek, settings.communityPot());
+        community = QuestGenerator.communityQuest(templates.values(), this::unlocked, rng, newWeek + "/" + tag(), settings.communityPot());
         communityDone = false;
         week = newWeek;
         Quest q = community;
@@ -232,6 +230,11 @@ public final class QuestService {
             setMeta(c, "quests.week", newWeek);
             setMeta(c, "quests.community-paid", "");
         });
+    }
+
+    /** A short random tag that makes each generation's quest ids unique. */
+    private String tag() {
+        return Integer.toHexString(0x100000 + rng.nextInt(0xF00000));
     }
 
     private static void insert(java.sql.Connection c, Quest q, int slot) throws java.sql.SQLException {
@@ -289,7 +292,8 @@ public final class QuestService {
 
     public QuestTemplate.Resolved resolve(Quest q) {
         QuestTemplate t = templates.get(q.template());
-        return t == null ? UNKNOWN : t.resolve(q.variant());
+        if (t == null) return new QuestTemplate.Resolved(msg.raw("quests.unknown-quest"), "barrier", QuestTemplate.Objective.COUNT, List.of(), 1, "unknown");
+        return t.resolve(q.variant());
     }
 
     /** The goal in raw stat units. */
@@ -377,7 +381,10 @@ public final class QuestService {
             int take = (int) Math.min(s.getAmount(), missing - taken);
             taken += take;
             if (take == s.getAmount()) inv.setItem(i, null);
-            else s.setAmount(s.getAmount() - take);
+            else {
+                s.setAmount(s.getAmount() - take);
+                inv.setItem(i, s); // don't rely on the array holding live stacks
+            }
         }
         if (taken == 0) return 0;
         plugin.questBoards().store(m, taken);
@@ -444,7 +451,7 @@ public final class QuestService {
                         if (structures == null) {
                             structures = new ArrayList<>();
                             for (GeneratedStructure s : at.getChunk().getStructures()) {
-                                if (s.getBoundingBox().contains(at.toVector())) structures.add(s.getStructure().getKey().getKey());
+                                if (s.getBoundingBox().contains(at.toVector())) structures.add(Places.structureId(s.getStructure()));
                             }
                         }
                         for (String s : structures) {
@@ -506,11 +513,18 @@ public final class QuestService {
             Player online = plugin.getServer().getPlayer(e.getKey());
             if (online != null) msg.send(online, "quests.community-share", "reward", plugin.economy().format(e.getValue()));
         }
-        plugin.getServer().sendMessage(msg.msg(total >= target ? "quests.community-done" : "quests.community-ended",
-                "quest", name, "players", String.valueOf(shares.size()), "pot", plugin.economy().format(pot)));
+        if (!shares.isEmpty()) { // a week nobody helped with ends quietly
+            plugin.getServer().sendMessage(msg.msg(total >= target ? "quests.community-done" : "quests.community-ended",
+                    "quest", name, "players", String.valueOf(shares.size()), "pot", plugin.economy().format(pot)));
+        }
         saveDirty();
         String paidId = q.id();
         db.run(c -> setMeta(c, "quests.community-paid", paidId));
+    }
+
+    /** Drops per-player screen state when they leave. */
+    public void forgetPlayer(UUID id) {
+        lastBar.remove(id);
     }
 
     private void actionBar(Player p, String key, String name, long progress, long amount) {
@@ -580,9 +594,21 @@ public final class QuestService {
         long reward = isCommunity ? settings.communityPot() : QuestGenerator.reward(amount, amounts, settings.rewards().get(tier));
         String base = isCommunity ? currentWeek() + "/community" : day + "/" + tier.id() + "-" + number;
         Quest q = new Quest(base + "-set" + Integer.toHexString(rng.nextInt(1 << 16)), tier, t.id(), variant, amount, reward, null, null);
+        List<String> dropped = new ArrayList<>();
         if (old != null) {
+            dropped.add(old.id());
+            // Rerolls that stood in for the old quest go too; a finished one is paid like at a refresh.
+            for (var e : personal.entrySet()) {
+                PlayerQuests pq = players.get(e.getKey());
+                e.getValue().removeIf(x -> {
+                    if (!old.id().equals(x.replaces())) return false;
+                    if (pq != null && pq.state(x.id()) == PlayerQuests.State.DONE) pay(e.getKey(), x, true);
+                    if (pq != null) pq.forget(x.id());
+                    dropped.add(x.id());
+                    return true;
+                });
+            }
             for (PlayerQuests pq : players.values()) pq.forget(old.id());
-            for (List<Quest> list : personal.values()) list.removeIf(x -> old.id().equals(x.replaces()));
         }
         if (isCommunity) {
             community = q;
@@ -594,10 +620,8 @@ public final class QuestService {
         int slot = isCommunity ? 100 : number - 1;
         String oldId = old == null ? null : old.id();
         db.run(c -> {
-            if (oldId != null) {
-                Database.update(c, "DELETE FROM quest_board WHERE id = ? OR replaces = ?", oldId, oldId);
-                Database.update(c, "DELETE FROM quest_progress WHERE quest = ?", oldId);
-            }
+            if (oldId != null) Database.update(c, "DELETE FROM quest_board WHERE id = ? OR replaces = ?", oldId, oldId);
+            for (String id : List.copyOf(dropped)) Database.update(c, "DELETE FROM quest_progress WHERE quest = ?", id);
             if (q.tier() == Tier.COMMUNITY) Database.update(c, "DELETE FROM quest_progress WHERE state = 'COMMUNITY'");
             insert(c, q, slot);
             if (q.tier() == Tier.COMMUNITY) setMeta(c, "quests.community-paid", "");

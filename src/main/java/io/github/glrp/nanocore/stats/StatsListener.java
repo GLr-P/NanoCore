@@ -306,7 +306,7 @@ public final class StatsListener implements Listener {
                 stats.addOnce(p, StatKeys.BIOME + at.getBlock().getBiome().getKey().getKey(), at);
                 for (GeneratedStructure s : at.getChunk().getStructures()) {
                     BoundingBox box = s.getBoundingBox();
-                    if (box.contains(at.toVector())) stats.addOnce(p, StatKeys.STRUCTURE + s.getStructure().getKey().getKey(), at);
+                    if (box.contains(at.toVector())) stats.addOnce(p, StatKeys.STRUCTURE + Places.structureId(s.getStructure()), at);
                 }
             } catch (RuntimeException ignored) {
                 // unknown biome/structure in a custom world: skip

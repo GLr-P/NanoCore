@@ -7,6 +7,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.DoubleChest;
 import org.bukkit.block.Container;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -19,8 +21,14 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 import java.sql.PreparedStatement;
@@ -232,24 +240,83 @@ public final class QuestBoards implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) {
+        boolean admin = e.getPlayer().hasPermission("nanocore.admin");
         if (isBoard(e.getBlock())) {
-            if (!e.getPlayer().hasPermission("nanocore.admin")) {
+            if (!admin) {
                 e.setCancelled(true);
                 plugin.messages().send(e.getPlayer(), "quests.board-protected");
                 return;
             }
             removeBoard(e.getBlock());
             plugin.messages().send(e.getPlayer(), "quests.board-removed");
+        } else if (!admin && isStorehouseBlock(e.getBlock())) {
+            e.setCancelled(true);
+            plugin.messages().send(e.getPlayer(), "quests.storehouse-protected");
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent e) {
-        e.blockList().removeIf(this::isBoard);
+        e.blockList().removeIf(b -> isBoard(b) || isStorehouseBlock(b));
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent e) {
-        e.blockList().removeIf(this::isBoard);
+        e.blockList().removeIf(b -> isBoard(b) || isStorehouseBlock(b));
+    }
+
+    // --- storehouse protection: only admins open or break it; hoppers can fill it but not empty it ---
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onOpen(InventoryOpenEvent e) {
+        if (e.getPlayer().hasPermission("nanocore.admin") || !isStorehouseInventory(e.getInventory())) return;
+        e.setCancelled(true);
+        plugin.messages().send(e.getPlayer(), "quests.storehouse-protected");
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onHopper(InventoryMoveItemEvent e) {
+        if (isStorehouseInventory(e.getSource())) e.setCancelled(true);
+    }
+
+    /** A reminder when finished quests are waiting at the board. */
+    @EventHandler
+    public void onJoin(PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        QuestService qs = plugin.quests();
+        PlayerQuests pq = qs.player(p.getUniqueId());
+        int done = 0;
+        for (Quest q : qs.view(p.getUniqueId())) if (pq.state(q.id()) == PlayerQuests.State.DONE) done++;
+        if (done == 0) return;
+        String key = done == 1 ? "quests.join-claim-one" : "quests.join-claim";
+        String count = String.valueOf(done);
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline()) plugin.messages().send(p, key, "count", count);
+        }, 40L);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        plugin.quests().forgetPlayer(e.getPlayer().getUniqueId());
+    }
+
+    /** The storehouse block, or the other half of it when it's a double chest. */
+    private boolean isStorehouseBlock(Block b) {
+        Place s = storehouse;
+        if (s == null || !b.getWorld().getName().equals(s.world()) || b.getY() != s.y()) return false;
+        int dx = Math.abs(b.getX() - s.x()), dz = Math.abs(b.getZ() - s.z());
+        if (dx + dz == 0) return true;
+        return dx + dz == 1 && b.getState(false) instanceof Container c && isStorehouseInventory(c.getInventory());
+    }
+
+    private boolean isStorehouseInventory(Inventory inv) {
+        if (storehouse == null || inv == null) return false;
+        InventoryHolder h = inv.getHolder(false);
+        if (h instanceof DoubleChest dc) return at(dc.getLeftSide()) || at(dc.getRightSide());
+        return at(h);
+    }
+
+    private boolean at(InventoryHolder h) {
+        return h instanceof BlockState bs && Place.of(bs.getBlock()).equals(storehouse);
     }
 }
