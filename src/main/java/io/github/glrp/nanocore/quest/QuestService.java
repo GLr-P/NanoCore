@@ -404,11 +404,13 @@ public final class QuestService {
 
     private void pay(UUID id, Quest q, boolean atRefresh) {
         String name = resolve(q).name();
-        plugin.economy().deposit(id, q.reward(), "quest: " + name);
+        // Events like Double Quest Day raise what quests pay while they run.
+        long reward = atRefresh ? q.reward() : Math.round(q.reward() * plugin.events().questMultiplier());
+        plugin.economy().deposit(id, reward, "quest: " + name);
         Player online = plugin.getServer().getPlayer(id);
         if (online != null) {
             msg.send(online, atRefresh ? "quests.paid-at-refresh" : "quests.claimed",
-                    "quest", name, "reward", plugin.economy().format(q.reward()));
+                    "quest", name, "reward", plugin.economy().format(reward));
         }
     }
 

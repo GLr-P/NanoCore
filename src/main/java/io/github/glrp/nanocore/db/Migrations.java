@@ -31,6 +31,13 @@ final class Migrations {
                     "CREATE TABLE quest_progress (uuid TEXT NOT NULL, quest TEXT NOT NULL, state TEXT NOT NULL, progress INTEGER NOT NULL, PRIMARY KEY (uuid, quest))",
                     "CREATE TABLE quest_places (kind TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, PRIMARY KEY (kind, world, x, y, z))",
                     "CREATE TABLE quest_backlog (id INTEGER PRIMARY KEY AUTOINCREMENT, item BLOB NOT NULL)"
+            },
+            // 4: events
+            new String[]{
+                    "CREATE TABLE event_active (id INTEGER PRIMARY KEY, data TEXT NOT NULL)",
+                    "CREATE TABLE event_history (id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT NOT NULL, name TEXT NOT NULL, started INTEGER NOT NULL, ended INTEGER NOT NULL, results TEXT NOT NULL)",
+                    "CREATE TABLE event_kits (uuid TEXT PRIMARY KEY, data TEXT NOT NULL)",
+                    "CREATE TABLE event_claims (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, item BLOB NOT NULL)"
             }
     );
 

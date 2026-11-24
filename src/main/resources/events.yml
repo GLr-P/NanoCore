@@ -1,0 +1,111 @@
+# Server events. Reload with /nanocore reload. Start one with /event start <id>, or let the daily schedule pick
+# (config.yml > events.auto). Put your own events here or in separate .yml files in the "events" folder.
+#
+# Each event:
+#   name, icon, rules (lines shown in chat when it starts and with /event rules)
+#   join: opt-in (players type /event join or click [Join]) or auto (everyone online is in)
+#   late-join: can people join after it started   max-players: 0 = no limit   teams: 0 = solo, 2+ = balanced teams
+#   area: points (and in-area-only rules) count only inside this area (/nanocore area ...)
+#   safe-zones: areas where PvP is off and the event rules don't apply (for example town)
+#   auto: in the daily random pool   weight: how often it's picked   min-players: online players needed, else it waits a day
+#   weekdays: [fri, sat] limits the days it can be picked (empty = any day)
+#   winner: score | votes | last-standing | none
+#   unlocks: a milestone that unlocks when the event finishes (nether, end, elytra, netherite, nether_roof, player_shops)
+#   phases: run in order. Each can have:
+#     name
+#     end: { timer: 30m, mc-days: 1, mc-time: 23000, ready: all | online | 75%, goal: true, last-standing: true }
+#          (whichever comes first; an admin can always skip with /event next)
+#     points: { stat counter: points } (see /nanocore stats <player>; "kill.*" matches every kill)
+#     goal: a total of everyone's points (shown on the sidebar; with end goal: true the phase ends there)
+#     rules: { pvp, keep-inventory, drop-chance (0-100 % per stack), mob-griefing, building, fall-damage, hunger,
+#              natural-regen, ender-pearls, elytra, time-lock (0-24000), weather (clear/rain), difficulty,
+#              quest-multiplier, in-area-only }
+#     kit: { items: [stone_sword, "cooked_beef 16"], gamemode: creative } (own things come back afterwards)
+#     vote: true (players vote with /vote: top 3, never themselves)
+#     lives: deaths allowed before a player is out and watches as a spectator
+#   prizes: { places: [250, 150, 100], participation: 25, trophy: true, trophy-item: gold_ingot,
+#             goal: 400, goal-bonus: 50, active-actions: 20 }
+
+mining_rush:
+  name: "Mining Rush"
+  icon: diamond_pickaxe
+  rules:
+    - "Mine ores for points. Only natural ores count, not placed ones."
+    - "Coal and copper 1 · iron and lapis 2 · gold 3 · emerald 8 · diamond 10 · ancient debris 15"
+  join: opt-in
+  min-players: 2
+  phases:
+    - name: "Get ready"
+      end: { timer: 2m }
+    - name: "Mine!"
+      end: { timer: 30m }
+      points:
+        mine.coal_ore: 1
+        mine.deepslate_coal_ore: 1
+        mine.copper_ore: 1
+        mine.deepslate_copper_ore: 1
+        mine.iron_ore: 2
+        mine.deepslate_iron_ore: 2
+        mine.lapis_ore: 2
+        mine.deepslate_lapis_ore: 2
+        mine.gold_ore: 3
+        mine.deepslate_gold_ore: 3
+        mine.nether_gold_ore: 3
+        mine.emerald_ore: 8
+        mine.deepslate_emerald_ore: 8
+        mine.diamond_ore: 10
+        mine.deepslate_diamond_ore: 10
+        mine.ancient_debris: 15
+
+fishing_derby:
+  name: "Fishing Derby"
+  icon: fishing_rod
+  rules:
+    - "Catch as much as you can. Cod 1 · salmon 2 · tropical fish 3 · pufferfish 4 · treasure 10"
+  join: opt-in
+  min-players: 2
+  phases:
+    - name: "Get ready"
+      end: { timer: 2m }
+    - name: "Fish!"
+      end: { timer: 30m }
+      points:
+        fish.cod: 1
+        fish.salmon: 2
+        fish.tropical_fish: 3
+        fish.pufferfish: 4
+        fish.treasure: 10
+
+monster_hunt:
+  name: "Monster Hunt Night"
+  icon: iron_sword
+  rules:
+    - "Defeat monsters through the night. Every naturally spawned hostile mob is a point."
+    - "Server goal: 400 together and everyone who took part gets 50 extra coins."
+  join: opt-in
+  min-players: 2
+  phases:
+    - name: "Wait for dark"
+      end: { mc-time: 13000, timer: 15m }
+    - name: "Hunt!"
+      end: { mc-time: 23000, timer: 15m }
+      goal: 400
+      points:
+        kill.zombie: 1
+        kill.husk: 1
+        kill.drowned: 1
+        kill.zombie_villager: 1
+        kill.skeleton: 1
+        kill.stray: 1
+        kill.bogged: 1
+        kill.creeper: 1
+        kill.spider: 1
+        kill.cave_spider: 1
+        kill.enderman: 1
+        kill.witch: 1
+        kill.slime: 1
+        kill.phantom: 1
+        kill.pillager: 1
+  prizes:
+    goal: 400
+    goal-bonus: 50

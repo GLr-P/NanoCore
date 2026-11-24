@@ -3,11 +3,15 @@ package io.github.glrp.nanocore;
 import io.github.glrp.nanocore.area.AreaService;
 import io.github.glrp.nanocore.blocks.PlacedBlockTracker;
 import io.github.glrp.nanocore.command.CoreCommands;
+import io.github.glrp.nanocore.command.EventCommands;
 import io.github.glrp.nanocore.command.QuestCommands;
 import io.github.glrp.nanocore.command.StatsCommands;
 import io.github.glrp.nanocore.config.Settings;
 import io.github.glrp.nanocore.db.Database;
 import io.github.glrp.nanocore.economy.EconomyService;
+import io.github.glrp.nanocore.event.Discord;
+import io.github.glrp.nanocore.event.EventRulesListener;
+import io.github.glrp.nanocore.event.EventService;
 import io.github.glrp.nanocore.gui.MenuListener;
 import io.github.glrp.nanocore.milestone.LockListener;
 import io.github.glrp.nanocore.milestone.MilestoneService;
@@ -40,6 +44,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
     private ShopService shop;
     private QuestService quests;
     private QuestBoards questBoards;
+    private EventService events;
 
     @Override
     public void onEnable() {
@@ -60,6 +65,14 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         quests = new QuestService(this, db, messages);
         questBoards = new QuestBoards(this, db);
         stats.subscribe((player, stat, amount, where) -> quests.onStat(player, stat, amount));
+        events = new EventService(this, db, messages);
+        stats.subscribe(events::onStat);
+        milestones.addListener((m, unlocked) -> {
+            if (!unlocked) return;
+            String name = milestones.displayName(m);
+            events.discord().send(messages.raw("events.discord-milestone").replace("<milestone>", name),
+                    messages.raw("milestones.hints." + m.id()), Discord.PURPLE, java.util.List.of());
+        });
 
         // Money earned/spent feeds the stats (players only; offline players are skipped).
         economy.addListener((id, delta, reason) -> {
@@ -76,6 +89,8 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         pm.registerEvents(new MenuListener(), this);
         pm.registerEvents(new SellListener(), this);
         pm.registerEvents(questBoards, this);
+        pm.registerEvents(events, this);
+        pm.registerEvents(new EventRulesListener(this), this);
         pm.registerEvents(this, this);
         statsListener.start();
         long flushTicks = settings.statsSaveSeconds() * 20L;
@@ -85,6 +100,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         }, flushTicks, flushTicks);
         quests.checkRefresh();
         getServer().getScheduler().runTaskTimer(this, this::questTick, 20L, 100L);
+        getServer().getScheduler().runTaskTimer(this, events::tick, 40L, 20L);
 
         if (pm.getPlugin("Vault") != null) {
             try {
@@ -97,10 +113,12 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         CoreCommands commands = new CoreCommands(this);
         QuestCommands questCommands = new QuestCommands(this);
         StatsCommands statsCommands = new StatsCommands(this);
+        EventCommands eventCommands = new EventCommands(this);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             commands.register(event.registrar());
             questCommands.register(event.registrar());
             statsCommands.register(event.registrar());
+            eventCommands.register(event.registrar());
         });
 
         // Players already online (after a reload) need accounts and stats.
@@ -117,6 +135,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
                 p.closeInventory();
             }
         }
+        if (events != null) events.shutdown();
         if (quests != null) quests.saveDirty();
         if (questBoards != null) {
             questBoards.flushBacklog();
@@ -139,6 +158,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         economy.setCurrencyNames(settings.currencySingular(), settings.currencyPlural());
         shop.reload(getConfig().getConfigurationSection("admin-shop"));
         quests.reload();
+        events.reload();
     }
 
     /** Every 5 s: new board when it's time, biome/structure quests, board labels, storehouse backlog. */
@@ -187,5 +207,9 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
 
     public QuestBoards questBoards() {
         return questBoards;
+    }
+
+    public EventService events() {
+        return events;
     }
 }

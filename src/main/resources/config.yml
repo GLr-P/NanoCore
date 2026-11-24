@@ -60,6 +60,33 @@ quests:
   # /quests counts as standing at the board within this many blocks of one.
   board-reach: 6
 
+events:
+  # The kinds of events are in events.yml (and any .yml file in the events folder next to it).
+  auto:
+    # Pick a random event from the pool every day.
+    enabled: true
+    # When it's announced (sign-up opens) and when it starts, 24-hour time.
+    announce-time: "12:00"
+    start-time: "19:00"
+    # The same event won't be picked again within this many days.
+    no-repeat-days: 5
+  # Time zone for these times, like America/Vancouver. Empty = the server's own.
+  timezone: ""
+  # Chat reminders this many minutes before an event starts.
+  reminders: [10, 1]
+  # Standard prizes (each event can set its own).
+  prizes:
+    places: [250, 150, 100]
+    participation: 25
+    trophy: true
+    trophy-item: gold_ingot
+    # Counted actions (blocks, kills, steps...) needed to count as taking part, so AFK players get nothing.
+    active-actions: 20
+  discord:
+    # A channel webhook URL (Channel settings > Integrations > Webhooks). Keep it secret: set it only on the server.
+    webhook-url: ""
+    username: "Server events"
+
 stats:
   # How often counters are saved to the database, in seconds.
   save-every-seconds: 30
