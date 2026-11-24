@@ -34,6 +34,7 @@ EOF
 mkdir -p plugins
 rm -f plugins/NanoCore-*.jar
 cp "$JAR" plugins/
+if [ "${BOT:-0}" = 1 ]; then mkdir -p plugins/NanoCore/events && cp "$TOOLS/bot/test-events.yml" plugins/NanoCore/events/; fi
 
 # The bot speaks 26.1, so it joins through ViaVersion + ViaBackwards. VaultUnlocked checks the economy hook.
 modrinth() {

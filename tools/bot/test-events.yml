@@ -1,0 +1,26 @@
+# Extra events for the CI play-test (copied to plugins/NanoCore/events/ by smoke-test.sh). Phases without an end
+# only move on with /event next or /event end, so the bot controls the pace.
+
+kit_test:
+  name: "Kit Test"
+  join: auto
+  auto: false
+  rules:
+    - "Everyone gets a kit; building is off."
+  phases:
+    - name: "Play"
+      rules: { building: false }
+      kit: { items: [stone_sword, "bread 3"] }
+    - name: "Wrap up"
+  prizes: { places: [10], participation: 5, trophy: false, active-actions: 0 }
+
+vote_test:
+  name: "Vote Test"
+  join: opt-in
+  auto: false
+  winner: votes
+  phases:
+    - name: "Sign-up"
+    - name: "Vote"
+      vote: true
+  prizes: { places: [40], participation: 0, trophy: false }

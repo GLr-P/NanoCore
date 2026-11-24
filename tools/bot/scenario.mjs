@@ -7,6 +7,7 @@ import { Vec3 } from 'vec3'
 const phase = process.argv[2] ?? 'first'
 const chat = []
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const itemCount = (name) => bot.inventory.items().filter((i) => i.name === name).reduce((n, i) => n + i.count, 0)
 
 // Mineflayer (through ViaBackwards) sometimes gets kicked for "invalid_player_movement" right after the server
 // teleports it mid-move. Real clients don't. During a step marked here such a kick means: rejoin and check the result.
@@ -224,6 +225,116 @@ async function first() {
   await expect('/nanocore shop status NanoBot', /sold 150 coins of 150 coins today/, 'shop status')
 
   await quests(count)
+  await events(count)
+}
+
+// --- Events: Mining Rush scoring and prizes, a vote with a second player, kit mode across a restart ---
+let pal
+const palChat = []
+
+async function connectPal() {
+  pal = createTestBot('NanoPal')
+  pal.on('messagestr', (t) => {
+    palChat.push(t)
+    console.log('  pal chat:', t)
+  })
+  pal.on('kicked', (r) => console.log(`STEP pal kicked: ${JSON.stringify(r)}`))
+  await new Promise((resolve) => pal.once('spawn', resolve))
+  await sleep(1500)
+}
+
+async function palSees(start, pattern, step, timeout = 8000) {
+  const until = Date.now() + timeout
+  while (Date.now() < until) {
+    if (palChat.slice(start).some((t) => pattern.test(t))) return
+    await sleep(100)
+  }
+  throw new Error(`${step} (the second player saw no line matching ${pattern})`)
+}
+
+async function events(count) {
+  await connectPal()
+
+  // Mining Rush: join, mine two ores, check the score, end with prizes.
+  await expect('/event start mining_rush', /Event: Mining Rush/, 'start mining rush')
+  await expect('/event join', /You're in Mining Rush/, 'join event')
+  await expect('/event next', /Mining Rush: Mine!/, 'mining phase')
+  await expect('/setblock 44 -61 40 coal_ore', /Changed the block/, 'coal ore')
+  await expect('/setblock 40 -61 40 diamond_ore', /Changed the block/, 'diamond ore')
+  await sleep(500)
+  for (const [x, z] of [[44, 40], [40, 40]]) {
+    const b = bot.blockAt(new Vec3(x, -61, z))
+    console.log(`STEP mine for the event: ${b?.name} at ${b?.position}`)
+    await bot.dig(b, true)
+    await sleep(300)
+  }
+  await sleep(1500)
+  await expect('/event top', /1\. NanoBot 11/, 'event score')
+  const sb = bot.scoreboard?.sidebar
+  console.log(`STEP sidebar: ${sb ? String(sb.title) : 'none'} ${sb ? JSON.stringify(sb.items?.map((i) => String(i.displayName ?? i.name))) : ''}`)
+  if (!sb || !String(sb.title).includes('Mining Rush')) throw new Error('event sidebar (no sidebar titled Mining Rush)')
+  await expect('/event addtime 5', /Changed the time by 5 minutes/, 'add time')
+  const start = chat.length
+  await expect('/event end', /Mining Rush is over!/, 'end mining rush')
+  await waitChat(start, /1st NanoBot \(11\)/, 'results line')
+  await waitChat(start, /You came 1st! You got 250 coins and a trophy/, 'first prize')
+  await sleep(500)
+  if (count('gold_ingot') !== 1) throw new Error(`trophy (expected 1 gold ingot trophy, have ${count('gold_ingot')})`)
+  await expect('/balance', /Balance: 2,125 coins/, 'event prize paid')
+  await expect('/event history', /Mining Rush: 1\. NanoBot/, 'event history')
+
+  // Vote: NanoBot votes for NanoPal, who wins the vote.
+  await expect('/event start vote_test', /Event: Vote Test/, 'start vote test')
+  await expect('/event join', /You're in Vote Test/, 'bot joins vote')
+  let p0 = palChat.length
+  pal.chat('/event join')
+  await palSees(p0, /You're in Vote Test/, 'pal joins vote')
+  await expect('/event next', /Voting is open/, 'voting phase')
+  const voteWin = await windowAfter(() => bot.chat('/vote'), 'open vote menu')
+  console.log(`STEP vote menu: slot 0 ${voteWin.slots[0]?.name}`)
+  if (voteWin.slots[0]?.name !== 'player_head') throw new Error('vote menu (no player to vote for in slot 0)')
+  const vs = chat.length
+  await windowAfter(() => bot.clickWindow(0, 0, 0), 'vote click')
+  await waitChat(vs, /You voted NanoPal as your 1st pick/, 'vote counted')
+  bot.closeWindow(bot.currentWindow)
+  await sleep(300)
+  await expect('/event top', /secret until the end/, 'votes stay secret')
+  const ve = chat.length
+  await expect('/event end', /Vote Test is over!/, 'end vote')
+  await waitChat(ve, /1st NanoPal \(3\)/, 'vote winner')
+
+  // Kit mode: everyone is in, own things are saved and swapped for the kit; building is off for players.
+  await expect('/give NanoPal dirt 1', /Gave 1/, 'give pal dirt')
+  await expect('/event start kit_test', /Event: Kit Test/, 'start kit test')
+  await sleep(1500)
+  console.log(`STEP kit: diamond=${count('diamond')} stone_sword=${count('stone_sword')} bread=${count('bread')}`)
+  if (count('diamond') !== 0 || count('stone_sword') !== 1 || count('bread') !== 3) throw new Error('kit (inventory not swapped for the kit)')
+  console.log('STEP pal tries to build during the event')
+  await expect('/tp NanoPal 30.5 -60 30.5', /Teleported/, 'pal to open ground')
+  await expect('/give NanoPal dirt 1', /Gave 1/, 'give pal dirt (the kit replaced the first)')
+  await sleep(500)
+  const dirt = pal.inventory.items().find((i) => i.name === 'dirt')
+  if (!dirt) throw new Error('pal has no dirt to place')
+  await pal.equip(dirt, 'hand')
+  const ground = pal.blockAt(new Vec3(31, -61, 30))
+  p0 = palChat.length
+  await pal.placeBlock(ground, new Vec3(0, 1, 0)).catch(() => {})
+  await palSees(p0, /Building is off here during Kit Test/, 'building rule')
+  pal.end()
+  await sleep(500)
+  // The server restarts now with the event still running; the second phase ends it.
+}
+
+async function kitAfterRestart() {
+  const count = itemCount
+  await expect('/event', /Kit Test/, 'event still running after the restart')
+  if (count('stone_sword') !== 1) throw new Error(`kit after restart (stone_sword=${count('stone_sword')})`)
+  const s = chat.length
+  await expect('/event end', /Kit Test is over!/, 'end kit test')
+  await waitChat(s, /Your own things are back/, 'own things back')
+  await sleep(1000)
+  console.log(`STEP after kit: diamond=${count('diamond')} gold_ingot=${count('gold_ingot')} stone_sword=${count('stone_sword')}`)
+  if (count('diamond') !== 5 || count('gold_ingot') !== 1 || count('stone_sword') !== 0) throw new Error('kit restore (own inventory not back)')
 }
 
 // --- Quests: a board block and storehouse chest on the flat world (grass at y -61, standing at -60) ---
@@ -348,20 +459,24 @@ async function storehouseLocked() {
 }
 
 async function second() {
-  await expect('/balance', /Balance: 1,875 coins/, 'balance saved')
+  await expect('/balance', /Balance: 2,125 coins/, 'balance saved')
   await questsSaved()
   await freshBoard()
   await expect('/sell', /sold all you can today/, 'shop limit saved')
   await expect('/nanocore milestone list', /nether: unlocked/, 'milestone saved')
   await expect('/nanocore stats NanoBot place.', /place\.dirt=1/, 'stats saved')
   await expect('/nanocore area list', /town: .*radius 50/, 'area saved')
+  await kitAfterRestart()
   await storehouseLocked()
 }
 
 async function third() {
   const s = await expect('/quests status NanoBot', /Quests for NanoBot:/, 'board after restart')
   if (/=claimed|=active|=done|\(reroll\)/.test(s.split('|')[0])) throw new Error(`old progress came back after a restart: ${s}`)
-  await expect('/balance', /Balance: 1,875 coins/, 'balance after second restart')
+  await expect('/balance', /Balance: 2,130 coins/, 'balance after second restart (kit test paid 5 for taking part)')
+  await connectPal()
+  await palSees(0, /Your own things are back/, 'offline player gets their things back on joining', 10000)
+  pal.end()
 }
 
 connect().then(async () => {
