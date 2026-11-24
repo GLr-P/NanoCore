@@ -1,0 +1,20 @@
+# NanoCore settings. Reload with /nanocore reload (the database file needs a restart).
+
+currency:
+  singular: coin
+  plural: coins
+  # Money every new player starts with.
+  starting-balance: 100
+
+milestones:
+  # Players in the Nether above this height are sent back down while the Nether roof is locked.
+  nether-roof-y: 127
+
+stats:
+  # How often counters are saved to the database, in seconds.
+  save-every-seconds: 30
+  # Count stats for players in creative or spectator mode (normally off).
+  count-creative: false
+
+storage:
+  file: nanocore.db

@@ -1,0 +1,65 @@
+# Player-facing text. MiniMessage format: https://docs.advntr.dev/minimessage/format.html
+# Placeholders are written like <amount>. Reload with /nanocore reload.
+
+prefix: "<gray>"
+
+economy:
+  balance-self: "<gray>Balance: <gold><balance></gold>"
+  balance-other: "<gray><player>'s balance: <gold><balance></gold>"
+  paid: "<gray>You paid <white><player></white> <gold><amount></gold>."
+  received: "<gray><white><player></white> paid you <gold><amount></gold>."
+  not-enough: "<red>You don't have enough. Your balance is <balance>."
+  invalid-amount: "<red>That amount doesn't work."
+  self-pay: "<red>You can't pay yourself."
+  unknown-player: "<red>No player called <player> has played here."
+  top-header: "<gold><bold>Richest players</bold></gold> <gray>(page <page>)"
+  top-line: "<gray><rank>. <white><player></white> <gold><balance></gold>"
+  top-empty: "<gray>Nobody here yet."
+  admin-done: "<gray><player> now has <gold><balance></gold>."
+
+milestones:
+  menu-title: "Server milestones"
+  unlocked: "<green>Unlocked"
+  locked: "<red>Locked"
+  unlocked-on: "<gray>Since <date>"
+  unlocked-broadcast-title: "<gold><bold><milestone></bold></gold>"
+  unlocked-broadcast-subtitle: "<yellow>is now unlocked!"
+  unlocked-broadcast-chat: "<gold><bold>Milestone!</bold></gold> <yellow><milestone></yellow> <gray>is now unlocked for everyone."
+  locked-admin: "<gray><milestone> is locked again."
+  already: "<gray><milestone> was already <state>."
+  list-line: "<gray><id>: <state>"
+  unknown: "<red>Unknown milestone. Try: <ids>"
+  names:
+    player_shops: "Player shops"
+    nether: "The Nether"
+    nether_roof: "The Nether roof"
+    netherite: "Netherite"
+    end: "The End"
+    elytra: "Elytra"
+  hints:
+    player_shops: "Unlocks at the Grand Market event."
+    nether: "Unlocks at the First Flame event."
+    nether_roof: "Unlocks on Nether Day."
+    netherite: "Unlocks at the Forge event."
+    end: "Unlocks at the End Times event."
+    elytra: "Unlocks at the Fall of the Dragon."
+  blocked:
+    nether: "<red>The Nether is sealed. <gray>It unlocks at the First Flame event."
+    nether_roof: "<red>The Nether roof is off limits until Nether Day."
+    netherite: "<red>Netherite can't be crafted yet. <gray>It unlocks at the Forge event."
+    end: "<red>The End is sealed. <gray>It unlocks at the End Times event."
+    elytra: "<red>Elytra can't glide yet. <gray>They unlock at the Fall of the Dragon."
+    player_shops: "<red>Player shops open at the Grand Market event."
+
+areas:
+  pos-set: "<gray>Corner <n> set to <white><x>, <y>, <z></white>."
+  need-corners: "<red>Set both corners first with /nanocore area pos1 and pos2."
+  created: "<gray>Area <white><name></white> saved."
+  deleted: "<gray>Area <white><name></white> deleted."
+  unknown: "<red>No area called <name>."
+  list-line: "<gray><name>: <white><desc></white>"
+  list-empty: "<gray>No areas yet."
+
+general:
+  players-only: "<red>Only players can do that."
+  reloaded: "<gray>NanoCore settings reloaded."

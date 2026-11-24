@@ -6,7 +6,7 @@
 
   <groupId>io.github.glrp</groupId>
   <artifactId>nanocore</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <packaging>jar</packaging>
   <name>NanoCore</name>
   <description>All-in-one Paper plugin: economy, shops, quests, events and milestone locks.</description>
@@ -24,6 +24,10 @@
       <id>papermc</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
+    <repository>
+      <id>codemc-creatorfromhell</id>
+      <url>https://repo.codemc.io/repository/creatorfromhell/</url>
+    </repository>
   </repositories>
 
   <dependencies>
@@ -34,9 +38,22 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>net.milkbowl.vault</groupId>
+      <artifactId>VaultUnlockedAPI</artifactId>
+      <version>2.20</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Paper ships the SQLite driver at runtime; tests need their own copy. -->
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.54.1.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -47,6 +64,16 @@
       <resource>
         <directory>src/main/resources</directory>
         <filtering>true</filtering>
+        <includes>
+          <include>paper-plugin.yml</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>paper-plugin.yml</exclude>
+        </excludes>
       </resource>
     </resources>
     <plugins>
@@ -54,6 +81,11 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.14.0</version>
+        <configuration>
+          <compilerArgs>
+            <arg>-Xlint:all,-deprecation,-processing,-serial</arg>
+          </compilerArgs>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
