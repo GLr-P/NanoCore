@@ -68,7 +68,45 @@ async function first() {
 
   // Milestones
   await expect('/nanocore milestone list', /nether: locked/, 'milestones start locked')
+
+  // Nether portal: won't light while locked, lights once unlocked.
+  const p = bot.entity.position.floored()
+  const fx = p.x + 3
+  await expect(`/fill ${fx} ${p.y} ${p.z} ${fx} ${p.y + 4} ${p.z + 3} obsidian`, /Successfully filled|blocks? filled/i, 'portal frame')
+  await expect(`/fill ${fx} ${p.y + 1} ${p.z + 1} ${fx} ${p.y + 3} ${p.z + 2} air`, /Successfully filled|blocks? filled/i, 'portal hole')
+  await expect('/give NanoBot flint_and_steel 1', /Gave 1/, 'give flint')
+  await sleep(500)
+  const lightPortal = async (step) => {
+    const flint = bot.inventory.items().find((i) => i.name === 'flint_and_steel')
+    if (!flint) throw new Error(`${step} (no flint and steel)`)
+    await bot.equip(flint, 'hand')
+    const base = bot.blockAt(new Vec3(fx, p.y, p.z + 1))
+    console.log(`STEP ${step}: light ${base?.name} at ${base?.position}`)
+    await bot.lookAt(base.position.offset(0.5, 1, 0.5), true)
+    await bot.activateBlock(base, new Vec3(0, 1, 0))
+    await sleep(1500)
+    return bot.blockAt(new Vec3(fx, p.y + 1, p.z + 1))?.name
+  }
+  const locked = await lightPortal('light locked portal')
+  if (locked === 'nether_portal') throw new Error('portal lock (portal formed while the Nether is locked)')
+  await expect(`/setblock ${fx} ${p.y + 1} ${p.z + 1} air`, /Changed the block|block/i, 'clear fire')
+
+  // Nether roof: a player above the roof is sent back down.
+  await expect('/execute in minecraft:the_nether run tp NanoBot 8.5 129 8.5', /Teleported/, 'tp to nether roof')
+  await sleep(3000)
+  bot.setControlState('forward', true)
+  await sleep(1500)
+  bot.setControlState('forward', false)
+  await sleep(1500)
+  console.log(`STEP roof: bot at ${bot.entity.position}`)
+  if (bot.entity.position.y > 127) throw new Error(`nether roof (still above the roof at y ${bot.entity.position.y})`)
+  if (!chat.some((t) => /Nether roof is off limits/.test(t))) throw new Error('nether roof (no message)')
+  await expect(`/execute in minecraft:overworld run tp NanoBot ${p.x + 0.5} ${p.y} ${p.z + 0.5}`, /Teleported/, 'tp back')
+  await sleep(2000)
+
   await expect('/nanocore milestone unlock nether', /The Nether.*now unlocked/, 'unlock nether')
+  const unlocked = await lightPortal('light unlocked portal')
+  if (unlocked !== 'nether_portal') throw new Error(`portal unlock (found ${unlocked} instead of a portal)`)
   await expect('/nanocore milestone unlock nether', /already unlocked/, 'unlock twice')
   const opened = new Promise((resolve) => bot.once('windowOpen', (w) => resolve(w)))
   bot.chat('/milestones')
