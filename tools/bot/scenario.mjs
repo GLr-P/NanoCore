@@ -271,8 +271,9 @@ async function events(count) {
   await sleep(1500)
   await expect('/event top', /1\. NanoBot 11/, 'event score')
   const sb = bot.scoreboard?.sidebar
-  console.log(`STEP sidebar: ${sb ? String(sb.title) : 'none'} ${sb ? JSON.stringify(sb.items?.map((i) => String(i.displayName ?? i.name))) : ''}`)
-  if (!sb || !String(sb.title).includes('Mining Rush')) throw new Error('event sidebar (no sidebar titled Mining Rush)')
+  const sbTitle = sb ? JSON.stringify(sb.title) : 'none'
+  console.log(`STEP sidebar: ${sbTitle.slice(0, 200)} (${sb?.items?.length ?? 0} lines seen by the bot)`)
+  if (!sb || !sbTitle.includes('Mining Rush')) throw new Error('event sidebar (no sidebar titled Mining Rush)')
   await expect('/event addtime 5', /Changed the time by 5 minutes/, 'add time')
   const start = chat.length
   await expect('/event end', /Mining Rush is over!/, 'end mining rush')
