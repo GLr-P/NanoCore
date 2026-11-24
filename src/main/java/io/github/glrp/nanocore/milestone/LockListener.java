@@ -26,7 +26,6 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Supplier;
 
 /** Enforces locked milestones: Nether, Nether roof, netherite, End and elytra. Applies to every rank. */
@@ -37,7 +36,7 @@ public final class LockListener implements Listener {
     private final MilestoneService milestones;
     private final Messages messages;
     private final Supplier<Settings> settings;
-    private final Map<UUID, Long> lastNotice = new HashMap<>();
+    private final Map<String, Long> lastNotice = new HashMap<>();
 
     public LockListener(MilestoneService milestones, Messages messages, Supplier<Settings> settings) {
         this.milestones = milestones;
@@ -52,9 +51,10 @@ public final class LockListener implements Listener {
     private void notice(Entity who, Milestone m) {
         if (!(who instanceof Player p)) return;
         long now = System.currentTimeMillis();
-        Long last = lastNotice.get(p.getUniqueId());
+        String key = p.getUniqueId() + ":" + m.id(); // one cooldown per lock, so different locks each get their message
+        Long last = lastNotice.get(key);
         if (last != null && now - last < NOTICE_COOLDOWN_MS) return;
-        lastNotice.put(p.getUniqueId(), now);
+        lastNotice.put(key, now);
         p.sendMessage(messages.msg("milestones.blocked." + m.id()));
     }
 
