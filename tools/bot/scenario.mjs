@@ -92,9 +92,14 @@ async function first() {
   await expect(`/setblock ${fx} ${p.y + 1} ${p.z + 1} air`, /Changed the block|block/i, 'clear fire')
 
   // Nether roof: a player above the roof is sent back down.
-  await expect('/execute in minecraft:the_nether run tp NanoBot 8.5 129 8.5', /Teleported/, 'tp to nether roof')
-  await sleep(1000)
+  // Enter the Nether first (on a fresh glass platform), let the bot settle, then go up to the roof.
+  await expect('/execute in minecraft:the_nether run fill 7 99 7 9 99 9 glass', /Successfully filled|blocks? filled/i, 'nether platform')
+  await expect('/execute in minecraft:the_nether run fill 7 100 7 9 102 9 air', /Successfully filled|blocks? filled|No blocks/i, 'nether platform air')
+  await expect('/execute in minecraft:the_nether run tp NanoBot 8.5 100 8.5', /Teleported/, 'tp into nether')
+  await sleep(2000)
   await bot.waitForChunksToLoad()
+  await sleep(2000)
+  await expect('/tp NanoBot 8.5 129 8.5', /Teleported/, 'tp to nether roof')
   await sleep(2000)
   bot.setControlState('forward', true)
   await sleep(1500)
