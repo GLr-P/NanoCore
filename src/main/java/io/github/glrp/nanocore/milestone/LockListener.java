@@ -24,8 +24,13 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.inventory.ItemStack;
 
+import org.bukkit.plugin.Plugin;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /** Enforces locked milestones: Nether, Nether roof, netherite, End and elytra. Applies to every rank. */
@@ -37,8 +42,11 @@ public final class LockListener implements Listener {
     private final Messages messages;
     private final Supplier<Settings> settings;
     private final Map<String, Long> lastNotice = new HashMap<>();
+    private final Set<UUID> moving = ConcurrentHashMap.newKeySet();
+    private final Plugin plugin;
 
-    public LockListener(MilestoneService milestones, Messages messages, Supplier<Settings> settings) {
+    public LockListener(Plugin plugin, MilestoneService milestones, Messages messages, Supplier<Settings> settings) {
+        this.plugin = plugin;
         this.milestones = milestones;
         this.messages = messages;
         this.settings = settings;
@@ -103,9 +111,17 @@ public final class LockListener implements Listener {
         if (!e.hasChangedBlock()) return;
         Location to = e.getTo();
         if (!aboveRoof(to)) return;
-        Location safe = aboveRoof(e.getFrom()) ? findBelowRoof(e.getPlayer(), to) : e.getFrom();
-        e.setTo(safe);
-        notice(e.getPlayer(), Milestone.NETHER_ROOF);
+        Player p = e.getPlayer();
+        notice(p, Milestone.NETHER_ROOF);
+        if (!aboveRoof(e.getFrom())) {
+            e.setTo(e.getFrom()); // just stepped up: stay where they were
+            return;
+        }
+        // Already above (pearl, elytra, a gap in the bedrock): a real teleport down on the next tick.
+        e.setCancelled(true);
+        if (!moving.add(p.getUniqueId())) return;
+        Location safe = findBelowRoof(p, to);
+        plugin.getServer().getScheduler().runTask(plugin, () -> p.teleportAsync(safe).whenComplete((ok, err) -> moving.remove(p.getUniqueId())));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

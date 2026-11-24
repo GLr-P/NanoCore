@@ -56,7 +56,7 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         StatsListener statsListener = new StatsListener(this, stats, placed, () -> settings);
         pm.registerEvents(statsListener, this); // must come before the tracker (see StatsListener)
         pm.registerEvents(placed, this);
-        pm.registerEvents(new LockListener(milestones, messages, () -> settings), this);
+        pm.registerEvents(new LockListener(this, milestones, messages, () -> settings), this);
         pm.registerEvents(new MenuListener(), this);
         pm.registerEvents(this, this);
         statsListener.start();
