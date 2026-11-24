@@ -99,7 +99,7 @@ public final class EventEditor implements Listener {
     private static void edit(NanoCorePlugin plugin, Player p, String id, Consumer<ConfigurationSection> change) {
         File f = fileFor(plugin, id);
         if (f == null) {
-            plugin.messages().send(p, "events.admin-unknown");
+            plugin.messages().send(p, "events.admin-unknown", "id", id);
             return;
         }
         YamlConfiguration y = YamlConfiguration.loadConfiguration(f);
@@ -151,7 +151,7 @@ public final class EventEditor implements Listener {
         Messages m = plugin.messages();
         File f = fileFor(plugin, id);
         if (f == null) {
-            m.send(p, "events.admin-unknown");
+            m.send(p, "events.admin-unknown", "id", id);
             return;
         }
         ConfigurationSection s = YamlConfiguration.loadConfiguration(f).getConfigurationSection(id);

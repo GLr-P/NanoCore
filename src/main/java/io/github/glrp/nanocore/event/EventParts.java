@@ -1125,6 +1125,8 @@ public final class EventParts implements Listener {
         Location l = e.getTo();
         boolean inStart = inArea(race.start(), l);
         double[] run = raceRuns.computeIfAbsent(pl.getUniqueId(), k -> new double[]{0, 0, 0});
+        // Standing on the start line when the race began, then straight out: that's a start too.
+        if (!inStart && run[2] == 0 && run[1] == 0 && inArea(race.start(), e.getFrom())) run[2] = 1;
         if (inStart) {
             if (run[2] == 0) pl.sendActionBar(msg.msg("events.race-ready"));
             run[0] = 0;
@@ -1258,7 +1260,8 @@ public final class EventParts implements Listener {
         if (s == null || s.phase < 0 || e.getHand() != EquipmentSlot.HAND) return;
         Player p = e.getPlayer();
         // Eyes of ender thrown count for "use.ender_eye" (the End Times).
-        if ((e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) && e.getItem() != null
+        boolean intoFrame = e.getClickedBlock() != null && e.getClickedBlock().getType() == Material.END_PORTAL_FRAME;
+        if ((e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK && !intoFrame) && e.getItem() != null
                 && e.getItem().getType() == Material.ENDER_EYE && ev.participant(p.getUniqueId())) {
             ev.credit(p, "use.ender_eye", 1, p.getLocation());
         }
