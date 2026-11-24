@@ -9,7 +9,7 @@ final class Migrations {
     private Migrations() {
     }
 
-    static final List<String[]> STEPS = List.of(
+    static final List<String[]> STEPS = List.<String[]>of(
             // 1: core
             new String[]{
                     "CREATE TABLE accounts (uuid TEXT PRIMARY KEY, name TEXT NOT NULL, balance INTEGER NOT NULL, updated INTEGER NOT NULL)",
