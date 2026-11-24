@@ -103,7 +103,7 @@ public final class LockListener implements Listener {
         if (!e.hasChangedBlock()) return;
         Location to = e.getTo();
         if (!aboveRoof(to)) return;
-        Location safe = aboveRoof(e.getFrom()) ? findBelowRoof(to) : e.getFrom();
+        Location safe = aboveRoof(e.getFrom()) ? findBelowRoof(e.getPlayer(), to) : e.getFrom();
         e.setTo(safe);
         notice(e.getPlayer(), Milestone.NETHER_ROOF);
     }
@@ -122,18 +122,36 @@ public final class LockListener implements Listener {
                 && l.getY() > settings.get().netherRoofY() && locked(Milestone.NETHER_ROOF);
     }
 
-    /** A standing spot under the roof at the same x/z, or the world spawn if there is none. */
-    private Location findBelowRoof(Location at) {
+    /**
+     * A standing spot under the roof: straight down first, then columns up to 16 blocks away.
+     * If there is none, the player's own respawn point (bed or the overworld spawn).
+     */
+    private Location findBelowRoof(Player p, Location at) {
         World w = at.getWorld();
         int top = Math.min(settings.get().netherRoofY() - 2, w.getMaxHeight() - 2);
-        for (int y = top; y > w.getMinHeight() + 1; y--) {
-            Block feet = w.getBlockAt(at.getBlockX(), y, at.getBlockZ());
-            if (feet.isPassable() && feet.getRelative(0, 1, 0).isPassable() && feet.getRelative(0, -1, 0).isSolid()
-                    && feet.getType() != Material.LAVA && feet.getRelative(0, -1, 0).getType() != Material.MAGMA_BLOCK) {
-                return new Location(w, at.getBlockX() + 0.5, y, at.getBlockZ() + 0.5, at.getYaw(), at.getPitch());
+        for (int r = 0; r <= 16; r += 4) {
+            for (int dx = -r; dx <= r; dx += 4) {
+                for (int dz = -r; dz <= r; dz += 4) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue; // ring by ring
+                    Location spot = standingSpot(w, at.getBlockX() + dx, at.getBlockZ() + dz, top, at);
+                    if (spot != null) return spot;
+                }
             }
         }
-        return w.getSpawnLocation();
+        Location home = p.getRespawnLocation();
+        return home != null ? home : p.getServer().getWorlds().get(0).getSpawnLocation();
+    }
+
+    private static Location standingSpot(World w, int x, int z, int top, Location facing) {
+        for (int y = top; y > w.getMinHeight() + 1; y--) {
+            Block feet = w.getBlockAt(x, y, z);
+            Block below = feet.getRelative(0, -1, 0);
+            if (feet.isPassable() && !feet.isLiquid() && feet.getRelative(0, 1, 0).isPassable() && below.isSolid()
+                    && below.getType() != Material.MAGMA_BLOCK) {
+                return new Location(w, x + 0.5, y, z + 0.5, facing.getYaw(), facing.getPitch());
+            }
+        }
+        return null;
     }
 
     // --- Netherite ---
