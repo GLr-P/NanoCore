@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EventDefsTest {
 
-    static final EventDef.Prizes DEFAULTS = new EventDef.Prizes(List.of(250L, 150L, 100L), 25, true, "gold_ingot", 0, 0, 20);
+    static final EventDef.Prizes DEFAULTS = new EventDef.Prizes(List.of(250L, 150L, 100L), 25, true, "gold_ingot", 0, 0, 20, 0, 0);
     static final Set<String> MILESTONES = Set.of("nether", "end", "elytra", "netherite", "nether_roof", "player_shops");
 
     static Map<String, EventDef> load(String path, List<String> warnings) {
@@ -30,7 +30,9 @@ class EventDefsTest {
         List<String> warnings = new ArrayList<>();
         Map<String, EventDef> all = load("src/main/resources/events.yml", warnings);
         assertEquals(List.of(), warnings);
-        assertEquals(Set.of("mining_rush", "fishing_derby", "monster_hunt"), all.keySet());
+        assertEquals(Set.of("mining_rush", "fishing_derby", "monster_hunt", "purge", "town_expansion", "carnival", "build_battle", "scavenger_hunt",
+                "treasure_hunt", "race_day", "harvest_festival", "double_quest_day", "king_of_the_hill", "spleef", "hide_and_seek", "market_day",
+                "grand_market", "first_flame", "nether_day", "the_forge", "end_times", "fall_of_the_dragon"), all.keySet());
 
         EventDef rush = all.get("mining_rush");
         assertEquals("Mining Rush", rush.name());

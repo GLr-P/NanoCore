@@ -44,6 +44,10 @@ final class Migrations {
                     "CREATE TABLE pshops (id INTEGER PRIMARY KEY, owner TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, item BLOB NOT NULL, mode TEXT NOT NULL, sell_price INTEGER NOT NULL, buy_price INTEGER NOT NULL, created INTEGER NOT NULL, UNIQUE (world, x, y, z))",
                     "CREATE TABLE pshop_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL, shop INTEGER NOT NULL, owner TEXT NOT NULL, customer TEXT NOT NULL, kind TEXT NOT NULL, item TEXT NOT NULL, amount INTEGER NOT NULL, coins INTEGER NOT NULL, seen INTEGER NOT NULL)",
                     "CREATE INDEX pshop_sales_owner ON pshop_sales (owner, seen)"
+            },
+            // 6: player shop amount per click
+            new String[]{
+                    "ALTER TABLE pshops ADD COLUMN click_amount INTEGER NOT NULL DEFAULT 0"
             }
     );
 

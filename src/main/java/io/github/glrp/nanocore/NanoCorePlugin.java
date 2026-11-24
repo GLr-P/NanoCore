@@ -97,6 +97,8 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         pm.registerEvents(playerShops, this);
         pm.registerEvents(events, this);
         pm.registerEvents(events.kits(), this);
+        pm.registerEvents(events.parts(), this);
+        pm.registerEvents(new io.github.glrp.nanocore.event.EventEditor(this), this);
         pm.registerEvents(new EventRulesListener(this), this);
         pm.registerEvents(this, this);
         statsListener.start();
@@ -110,6 +112,14 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         getServer().getScheduler().runTaskTimer(this, events::tick, 40L, 20L);
         getServer().getScheduler().runTaskTimer(this, playerShops::tick, 30L, 20L);
 
+        if (pm.getPlugin("BlueMap") != null) {
+            try {
+                var markers = new io.github.glrp.nanocore.integration.BlueMapMarkers(this);
+                getServer().getScheduler().runTaskTimer(this, markers::update, 200L, 600L);
+            } catch (LinkageError | RuntimeException e) {
+                getLogger().warning("BlueMap is installed but its API couldn't be used: " + e);
+            }
+        }
         if (pm.getPlugin("Vault") != null) {
             try {
                 io.github.glrp.nanocore.economy.VaultHook.register(this, economy);

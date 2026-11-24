@@ -129,7 +129,7 @@ public final class EventRulesListener implements Listener {
     public void onBreak(BlockBreakEvent e) {
         if (e.getPlayer().hasPermission("nanocore.admin")) return;
         EventDef.Rules r = at(e.getBlock().getLocation());
-        if (r != null && Boolean.FALSE.equals(r.building())) {
+        if (r != null && Boolean.FALSE.equals(r.building()) && !plugin.events().parts().breakable(e.getBlock())) {
             e.setCancelled(true);
             notice(e.getPlayer(), "events.rule-building");
         }

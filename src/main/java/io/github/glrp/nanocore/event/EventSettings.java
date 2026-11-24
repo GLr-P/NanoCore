@@ -39,7 +39,7 @@ public record EventSettings(
         List<Long> places = s.contains("prizes.places") ? s.getLongList("prizes.places") : List.of(250L, 150L, 100L);
         EventDef.Prizes prizes = new EventDef.Prizes(List.copyOf(places), s.getLong("prizes.participation", 25),
                 s.getBoolean("prizes.trophy", true), s.getString("prizes.trophy-item", "gold_ingot"), 0, 0,
-                Math.max(0, s.getLong("prizes.active-actions", 20)));
+                Math.max(0, s.getLong("prizes.active-actions", 20)), 0, 0);
         return new EventSettings(s.getBoolean("auto.enabled", true), announce, start, Math.max(0, s.getInt("auto.no-repeat-days", 5)),
                 zone, List.copyOf(reminders), prizes, s.getString("discord.webhook-url", "").trim(), s.getString("discord.username", "Server events"));
     }

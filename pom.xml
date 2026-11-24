@@ -25,6 +25,10 @@
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
     <repository>
+      <id>bluecolored</id>
+      <url>https://repo.bluecolored.de/releases/</url>
+    </repository>
+    <repository>
       <id>codemc-creatorfromhell</id>
       <url>https://repo.codemc.io/repository/creatorfromhell/</url>
     </repository>
@@ -41,6 +45,13 @@
       <groupId>net.milkbowl.vault</groupId>
       <artifactId>VaultUnlockedAPI</artifactId>
       <version>2.20</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Optional: markers on the BlueMap web map (only used when BlueMap is installed). -->
+    <dependency>
+      <groupId>de.bluecolored</groupId>
+      <artifactId>bluemap-api</artifactId>
+      <version>2.7.3</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

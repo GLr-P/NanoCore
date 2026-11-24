@@ -27,9 +27,14 @@ public record EventDef(
         List<Phase> phases,
         Prizes prizes,
         String unlocks,
-        Winner winner) {
+        Winner winner,
+        String requires) {
 
-    public enum Winner { SCORE, VOTES, LAST_STANDING, NONE }
+    /** TIME: the best (lowest) race time wins; scores hold {@link #TIME_BASE} minus the time. */
+    public enum Winner { SCORE, VOTES, LAST_STANDING, TIME, NONE }
+
+    /** Race scores are TIME_BASE - best time in ms, so a higher score is a faster time. */
+    public static final long TIME_BASE = 86_400_000L;
 
     /**
      * @param points stat counter (or "prefix*") to points per unit counted
@@ -37,7 +42,7 @@ public record EventDef(
      * @param lives  deaths allowed before a player is out (0 = unlimited)
      */
     public record Phase(String id, String name, End end, Map<String, Long> points, Rules rules, Kit kit,
-                        boolean vote, int lives, long goal) {
+                        boolean vote, int lives, long goal, PartsDef parts) {
 
         /** Points for one unit of this stat: an exact key first, then the longest "prefix*" match. Totals never count. */
         public long pointsFor(String stat) {
@@ -70,9 +75,10 @@ public record EventDef(
      * @param ready   "all", "online" or a share like "75%": when that many participants typed /event done (null = no ready check)
      * @param skipIfPast with mc-time: end right away if the phase starts less than half a day after that time ("wait for night" started at night)
      */
-    public record End(long timerMs, long mcTicks, long mcTime, String ready, boolean goal, boolean lastStanding, boolean skipIfPast) {
+    public record End(long timerMs, long mcTicks, long mcTime, String ready, boolean goal, boolean lastStanding, boolean skipIfPast,
+                      boolean cleared, int finishers) {
         public boolean any() {
-            return timerMs > 0 || mcTicks > 0 || mcTime >= 0 || ready != null || goal || lastStanding;
+            return timerMs > 0 || mcTicks > 0 || mcTime >= 0 || ready != null || goal || lastStanding || cleared || finishers > 0;
         }
     }
 
@@ -99,7 +105,8 @@ public record EventDef(
      * @param goal          a total for all participants together; when reached everyone who took part gets goalBonus
      * @param activeActions counted actions needed to count as taking part (AFK check)
      */
-    public record Prizes(List<Long> places, long participation, boolean trophy, String trophyItem, long goal, long goalBonus, long activeActions) {
+    public record Prizes(List<Long> places, long participation, boolean trophy, String trophyItem, long goal, long goalBonus, long activeActions,
+                         long share, long shareMin) {
     }
 
     public Phase phase(int i) {

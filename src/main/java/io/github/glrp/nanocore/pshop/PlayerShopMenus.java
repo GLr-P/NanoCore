@@ -148,6 +148,11 @@ public final class PlayerShopMenus {
             priceRow(plugin, menu, 36, m.item("pshop.buy-price", "price", eco.format(s.buyPrice())), Material.GOLD_NUGGET, s.buyPrice(),
                     v -> svc.setBuyPrice(s, v), () -> editor(plugin, p, s));
         }
+        menu.set(47, Menu.item(Material.HOPPER, m.item("pshop.click-amount", "amount", s.clickAmount() > 0 ? String.valueOf(s.clickAmount()) : m.raw("pshop.click-amount-any")),
+                List.of(m.item("pshop.click-amount-lore"))), e -> later(plugin, () -> {
+            svc.cycleClickAmount(s);
+            editor(plugin, p, s);
+        }));
         menu.set(45, Menu.item(Material.ARROW, m.item("pshop.back"), List.of()), e -> later(plugin, () -> mine(plugin, p)));
         menu.set(49, Menu.item(Material.BOOK, m.item("pshop.editor-help-title"), List.of(m.item("pshop.editor-help"), m.item("pshop.editor-help-2"))));
         menu.set(53, Menu.item(Material.BARRIER, m.item("pshop.delete"), List.of(m.item("pshop.delete-lore"))), e -> later(plugin, () ->
@@ -191,7 +196,7 @@ public final class PlayerShopMenus {
         var eco = plugin.economy();
         Menu menu = new Menu(3, m.msg("pshop.customer-title", "player", eco.name(s.owner())));
         menu.set(4, icon(s.item, 1, PlayerShopService.name(s.item), info(plugin, s)));
-        int[] amounts = ShopTrade.clickAmounts(s.item.getMaxStackSize());
+        int[] amounts = s.clickAmount() > 0 ? new int[]{Math.min(s.clickAmount(), s.item.getMaxStackSize())} : ShopTrade.clickAmounts(s.item.getMaxStackSize());
         if (s.mode().ownerSells()) {
             for (int i = 0; i < amounts.length; i++) {
                 int n = amounts[i];

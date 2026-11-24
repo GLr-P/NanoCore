@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 /** "30m", "2h", "90s", "1h30m", "45" (minutes) to milliseconds, and back to "12m 30s". Pure logic. */
 public final class Durations {
 
-    private static final Pattern PART = Pattern.compile("(\\d+)\\s*([hms]?)");
+    private static final Pattern PART = Pattern.compile("(\\d+)\\s*([dhms]?)");
 
     private Durations() {
     }
@@ -22,6 +22,7 @@ public final class Durations {
             if (m.start() != end) throw new IllegalArgumentException("'" + text + "' isn't a time like 30m, 2h or 1h30m");
             long n = Long.parseLong(m.group(1));
             total += switch (m.group(2)) {
+                case "d" -> n * 86_400_000L;
                 case "h" -> n * 3_600_000L;
                 case "s" -> n * 1_000L;
                 default -> n * 60_000L;

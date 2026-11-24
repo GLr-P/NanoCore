@@ -109,7 +109,7 @@ class EventRulesTest {
 
     @Test
     void prizes() {
-        EventDef.Prizes p = new EventDef.Prizes(List.of(250L, 150L, 100L), 25, true, "gold_ingot", 400, 50, 20);
+        EventDef.Prizes p = new EventDef.Prizes(List.of(250L, 150L, 100L), 25, true, "gold_ingot", 400, 50, 20, 0, 0);
         List<Ranking.Place<String>> places = List.of(
                 new Ranking.Place<>("a", 1, 30), new Ranking.Place<>("b", 2, 20), new Ranking.Place<>("c", 2, 20),
                 new Ranking.Place<>("d", 4, 5));
@@ -219,7 +219,7 @@ class EventRulesTest {
 
     static EventDef def(String id, boolean auto, Set<DayOfWeek> days, int weight) {
         return new EventDef(id, id, "clock", List.of(), false, true, 0, 0, null, List.of(), auto, weight, 0, days,
-                List.of(new EventDef.Phase("p", "P", new EventDef.End(60_000, 0, -1, null, false, false, false), Map.of(), EventDef.Rules.NONE, null, false, 0, 0)),
-                new EventDef.Prizes(List.of(1L), 0, false, "gold_ingot", 0, 0, 0), null, EventDef.Winner.SCORE);
+                List.of(new EventDef.Phase("p", "P", new EventDef.End(60_000, 0, -1, null, false, false, false, false, 0), Map.of(), EventDef.Rules.NONE, null, false, 0, 0, PartsDef.NONE)),
+                new EventDef.Prizes(List.of(1L), 0, false, "gold_ingot", 0, 0, 0, 0, 0), null, EventDef.Winner.SCORE, null);
     }
 }

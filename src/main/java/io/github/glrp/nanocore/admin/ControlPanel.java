@@ -98,6 +98,8 @@ public final class ControlPanel {
         menu.set(19, Menu.item(Material.PLAYER_HEAD, m.item("panel.players"), lore(m, "panel.players-lore")), e -> later(plugin, () -> players(plugin, p, 0)));
         menu.set(20, Menu.item(Material.BEACON, m.item("panel.milestones"), lore(m, "panel.milestones-lore")), e -> later(plugin, () -> milestones(plugin, p)));
         menu.set(21, Menu.item(Material.CLOCK, m.item("panel.events"), lore(m, "panel.events-lore")), e -> later(plugin, () -> EventMenus.admin(plugin, p)));
+        menu.set(30, Menu.item(Material.WRITABLE_BOOK, m.item("panel.edit-events"), lore(m, "panel.edit-events-lore")),
+                e -> later(plugin, () -> io.github.glrp.nanocore.event.EventEditor.list(plugin, p)));
         menu.set(22, Menu.item(Material.WRITABLE_BOOK, m.item("panel.quests"), lore(m, "panel.quests-lore")), e -> later(plugin, () -> quests(plugin, p)));
         menu.set(23, Menu.item(Material.EMERALD, m.item("panel.admin-shop"), lore(m, "panel.admin-shop-lore")), e -> later(plugin, () -> adminShop(plugin, p)));
         menu.set(24, Menu.item(Material.CHEST, m.item("panel.player-shops"), lore(m, "panel.player-shops-lore")),

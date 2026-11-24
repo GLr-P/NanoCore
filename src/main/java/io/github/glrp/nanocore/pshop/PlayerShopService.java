@@ -86,7 +86,7 @@ public final class PlayerShopService implements Listener {
         this.placedBy = new NamespacedKey(plugin, "placed_by");
         db.sync(c -> {
             try (PreparedStatement ps = c.prepareStatement(
-                    "SELECT id, owner, world, x, y, z, item, mode, sell_price, buy_price, created FROM pshops ORDER BY id");
+                    "SELECT id, owner, world, x, y, z, item, mode, sell_price, buy_price, created, click_amount FROM pshops ORDER BY id");
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     long id = rs.getLong(1);
@@ -96,6 +96,7 @@ public final class PlayerShopService implements Listener {
                                 new PlayerShop.Pos(rs.getString(3), rs.getInt(4), rs.getInt(5), rs.getInt(6)),
                                 ItemStack.deserializeBytes(rs.getBytes(7)), ShopTrade.Mode.parse(rs.getString(8)),
                                 rs.getLong(9), rs.getLong(10), rs.getLong(11));
+                        s.clickAmount = rs.getInt(12);
                         shops.put(id, s);
                         byPos.put(s.pos, s);
                     } catch (RuntimeException e) {
@@ -128,7 +129,13 @@ public final class PlayerShopService implements Listener {
     }
 
     public double taxPercent() {
-        return taxPercent;
+        return tax();
+    }
+
+    /** The tax right now: an event phase (Market Day) can change it. */
+    private double tax() {
+        Double t = plugin.events() == null ? null : plugin.events().parts().shopTax();
+        return t != null ? t : taxPercent;
     }
 
     // --- lookups ---
@@ -281,6 +288,24 @@ public final class PlayerShopService implements Listener {
         save(s);
     }
 
+    /** Next amount per click: default buttons, then 1, 8, 16, 32, 64 (up to the item's stack size). */
+    public void cycleClickAmount(PlayerShop s) {
+        int[] options = {0, 1, 8, 16, 32, 64};
+        int max = s.item.getMaxStackSize();
+        int i = 0;
+        while (i < options.length && options[i] != s.clickAmount) i++;
+        int next = 0;
+        for (int k = 1; k <= options.length; k++) {
+            int o = options[(i + k) % options.length];
+            if (o <= max) {
+                next = o;
+                break;
+            }
+        }
+        s.clickAmount = next;
+        save(s);
+    }
+
     public void setBuyPrice(PlayerShop s, long price) {
         s.buyPrice = ShopTrade.clampPrice(price, MAX_PRICE);
         save(s);
@@ -300,7 +325,9 @@ public final class PlayerShopService implements Listener {
         byte[] data = s.item.serializeAsBytes();
         String mode = s.mode.name();
         long sell = s.sellPrice, buy = s.buyPrice;
-        db.run(c -> Database.update(c, "UPDATE pshops SET item = ?, mode = ?, sell_price = ?, buy_price = ? WHERE id = ?", data, mode, sell, buy, s.id));
+        int click = s.clickAmount;
+        db.run(c -> Database.update(c, "UPDATE pshops SET item = ?, mode = ?, sell_price = ?, buy_price = ?, click_amount = ? WHERE id = ?",
+                data, mode, sell, buy, click, s.id));
         refreshDisplay(s);
     }
 
@@ -321,7 +348,7 @@ public final class PlayerShopService implements Listener {
         ItemStack[] stock = chest.getContents();
         ItemStack[] bag = p.getInventory().getStorageContents();
         ShopTrade.Result r = ShopTrade.customerBuys(s.mode, s.sellPrice, wanted, Stacks.count(stock, s.item), Stacks.room(bag, s.item),
-                eco().balance(p.getUniqueId()), taxPercent);
+                eco().balance(p.getUniqueId()), tax());
         if (!r.ok()) return r;
         if (eco().withdraw(p.getUniqueId(), r.total(), "shop #" + s.id + " buy") != Accounts.Result.OK) {
             return new ShopTrade.Result(ShopTrade.Status.CANT_AFFORD, 0, 0, 0, 0);
@@ -348,7 +375,7 @@ public final class PlayerShopService implements Listener {
         ItemStack[] stock = chest.getContents();
         ItemStack[] bag = p.getInventory().getStorageContents();
         ShopTrade.Result r = ShopTrade.customerSells(s.mode, s.buyPrice, wanted, Stacks.count(bag, s.item), Stacks.room(stock, s.item),
-                eco().balance(s.owner), taxPercent);
+                eco().balance(s.owner), tax());
         if (!r.ok()) return r;
         if (eco().withdraw(s.owner, r.total(), "shop #" + s.id + " bought") != Accounts.Result.OK) {
             return new ShopTrade.Result(ShopTrade.Status.OWNER_CANT_AFFORD, 0, 0, 0, 0);

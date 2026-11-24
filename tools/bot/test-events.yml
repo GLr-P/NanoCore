@@ -24,3 +24,69 @@ vote_test:
     - name: "Vote"
       vote: true
   prizes: { places: [40], participation: 0, trophy: false }
+
+# Gameplay parts (driven in scenario.mjs "third"). No prizes, so balances stay put.
+waves_test:
+  name: "Waves Test"
+  join: auto
+  auto: false
+  phases:
+    - name: "Fight"
+      end: { cleared: true }
+      scale: false
+      rules: { difficulty: easy }
+      points: { event.wave_kill: 1 }
+      waves:
+        - mobs: ["zombie 2 Test Zombie"]
+          effects: [slowness 5]
+      boss: { type: zombie, name: "Test Boss", health: 30, abilities: [shield] }
+    - name: "Done"
+  prizes: { places: [], participation: 0, trophy: false }
+
+collect_test:
+  name: "Collect Test"
+  join: opt-in
+  auto: false
+  phases:
+    - name: "Hunt"
+      end: { finishers: 1 }
+      collect: { count: 2, at-board: false, pool: [dirt, stick] }
+    - name: "Done"
+  prizes: { places: [], participation: 0, trophy: false }
+
+deliver_test:
+  name: "Deliver Test"
+  join: auto
+  auto: false
+  winner: none
+  phases:
+    - name: "Gather"
+      end: { goal: true }
+      points: { event.deliver: 1 }
+      deliver: { storehouse: false, need: { cobblestone: 5, "#planks": 3 } }
+    - name: "Done"
+  prizes: { places: [], participation: 0, trophy: false }
+
+hold_test:
+  name: "Hold Test"
+  join: opt-in
+  auto: false
+  phases:
+    - name: "Hold"
+      end: { timer: 5s }
+      hold: hilltest
+      points: { event.hold: 1 }
+    - name: "Done"
+  prizes: { places: [], participation: 0, trophy: false }
+
+checklist_test:
+  name: "Checklist Test"
+  join: auto
+  auto: false
+  winner: none
+  unlocks: end
+  phases:
+    - name: "Tasks"
+      end: { goal: true }
+      checklist: ["First task", "Second task"]
+  prizes: { places: [], participation: 0, trophy: false }

@@ -103,6 +103,61 @@ public final class EventCommands {
                     return err == null ? Command.SINGLE_SUCCESS : 0;
                 })))
                 .then(Commands.literal("rules").executes(this::rules))
+                .then(Commands.literal("handin").executes(ctx -> asPlayer(ctx, p -> {
+                    String err = ev().parts().handIn(p);
+                    if (err != null) msg().send(p, err);
+                    return err == null ? Command.SINGLE_SUCCESS : 0;
+                })))
+                .then(Commands.literal("deliver").executes(ctx -> asPlayer(ctx, p -> {
+                    String err = ev().parts().deliver(p);
+                    if (err != null) msg().send(p, err);
+                    return err == null ? Command.SINGLE_SUCCESS : 0;
+                })))
+                .then(Commands.literal("list").executes(ctx -> asPlayer(ctx, p -> {
+                    ev().parts().showList(p);
+                    return Command.SINGLE_SUCCESS;
+                })))
+                .then(Commands.literal("plots").executes(ctx -> {
+                    CommandSender s = ctx.getSource().getSender();
+                    var plots = ev().parts().plotList();
+                    if (plots.isEmpty()) msg().send(s, "events.plots-none");
+                    for (String[] p : plots) msg().send(s, "events.plots-line", "player", p[0], "x", p[1], "y", p[2], "z", p[3]);
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("check").requires(EventCommands::admin)
+                        .executes(ctx -> {
+                            CommandSender s = ctx.getSource().getSender();
+                            List<String> list = ev().parts().checklist();
+                            if (list.isEmpty()) msg().send(s, "events.check-none");
+                            for (int i = 0; i < list.size(); i++) msg().send(s, "events.check-line", "n", String.valueOf(i + 1), "task", list.get(i));
+                            return Command.SINGLE_SUCCESS;
+                        })
+                        .then(Commands.argument("n", IntegerArgumentType.integer(1, 50)).executes(ctx -> {
+                            String err = ev().parts().check(IntegerArgumentType.getInteger(ctx, "n"), ctx.getSource().getSender().getName());
+                            if (err != null) msg().send(ctx.getSource().getSender(), err);
+                            return err == null ? Command.SINGLE_SUCCESS : 0;
+                        })))
+                .then(Commands.literal("create").requires(EventCommands::admin)
+                        .then(Commands.argument("new-id", StringArgumentType.word())
+                                .then(Commands.argument("template", StringArgumentType.word()).suggests(eventIds).executes(ctx -> asPlayer(ctx, p -> {
+                                    String err = io.github.glrp.nanocore.event.EventEditor.create(plugin, StringArgumentType.getString(ctx, "new-id"),
+                                            StringArgumentType.getString(ctx, "template"));
+                                    if (err != null) {
+                                        msg().send(p, err);
+                                        return 0;
+                                    }
+                                    io.github.glrp.nanocore.event.EventEditor.open(plugin, p, StringArgumentType.getString(ctx, "new-id").toLowerCase(Locale.ROOT));
+                                    return Command.SINGLE_SUCCESS;
+                                })))))
+                .then(Commands.literal("edit").requires(EventCommands::admin)
+                        .executes(ctx -> asPlayer(ctx, p -> {
+                            io.github.glrp.nanocore.event.EventEditor.list(plugin, p);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                        .then(Commands.argument("id", StringArgumentType.word()).suggests(eventIds).executes(ctx -> asPlayer(ctx, p -> {
+                            io.github.glrp.nanocore.event.EventEditor.open(plugin, p, StringArgumentType.getString(ctx, "id"));
+                            return Command.SINGLE_SUCCESS;
+                        }))))
                 .then(Commands.literal("top").executes(this::top))
                 .then(Commands.literal("claim").executes(ctx -> asPlayer(ctx, p -> {
                     ev().claim(p);

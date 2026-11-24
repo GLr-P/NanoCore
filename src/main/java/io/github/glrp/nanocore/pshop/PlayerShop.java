@@ -35,6 +35,8 @@ public final class PlayerShop {
     long sellPrice;
     /** What the owner pays customers per item. */
     long buyPrice;
+    /** Items per click in the customer window (0 = buttons for 1, 8 and a stack). */
+    int clickAmount;
     final long created;
 
     PlayerShop(long id, UUID owner, Pos pos, ItemStack item, ShopTrade.Mode mode, long sellPrice, long buyPrice, long created) {
@@ -74,6 +76,10 @@ public final class PlayerShop {
 
     public long buyPrice() {
         return buyPrice;
+    }
+
+    public int clickAmount() {
+        return clickAmount;
     }
 
     public String itemId() {

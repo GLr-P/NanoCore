@@ -44,6 +44,22 @@ public final class EventState {
     public final Map<UUID, List<UUID>> votes = new HashMap<>();
     /** World settings to put back when the event ends, like "difficulty.world" -> "normal". */
     public final Map<String, String> restore = new HashMap<>();
+    /** State of the gameplay parts (current wave, plots, treasure spots, race bests, roles...), as text. */
+    public final Map<String, String> data = new LinkedHashMap<>();
+
+    public String get(String key) {
+        return data.get(key);
+    }
+
+    public long getLong(String key, long fallback) {
+        String v = data.get(key);
+        if (v == null) return fallback;
+        try {
+            return Long.parseLong(v);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
 
     public boolean paused() {
         return pausedRemaining >= 0;
@@ -95,6 +111,9 @@ public final class EventState {
         List<String> r = new ArrayList<>();
         restore.forEach((k, v) -> r.add(k + "=" + v));
         y.set("restore", r);
+        List<String> d = new ArrayList<>();
+        data.forEach((k, v) -> d.add(k + "=" + v));
+        y.set("data", d);
         return y.saveToString();
     }
 
@@ -134,6 +153,10 @@ public final class EventState {
         for (String line : y.getStringList("restore")) {
             int eq = line.indexOf('=');
             if (eq > 0) s.restore.put(line.substring(0, eq), line.substring(eq + 1));
+        }
+        for (String line : y.getStringList("data")) {
+            int eq = line.indexOf('=');
+            if (eq > 0) s.data.put(line.substring(0, eq), line.substring(eq + 1));
         }
         return s;
     }

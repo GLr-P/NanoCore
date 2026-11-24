@@ -24,6 +24,13 @@ public final class PlayerMenu {
         plugin.getServer().getScheduler().runTask(plugin, r);
     }
 
+    /** The player guide as a book on screen (nothing is put in the inventory). */
+    public static void guide(NanoCorePlugin plugin, Player p) {
+        List<net.kyori.adventure.text.Component> pages = new java.util.ArrayList<>();
+        for (String page : plugin.messages().rawList("guide.pages")) pages.add(Messages.parse(page));
+        p.openBook(net.kyori.adventure.inventory.Book.book(plugin.messages().msg("guide.title"), plugin.messages().msg("guide.author"), pages));
+    }
+
     public static void open(NanoCorePlugin plugin, Player p) {
         Messages m = plugin.messages();
         Menu menu = new Menu(3, m.msg("panel.player-menu-title"));
@@ -44,6 +51,10 @@ public final class PlayerMenu {
         menu.set(16, Menu.item(Material.BOOK, m.item("panel.pm-stats"), List.of(m.item("panel.pm-stats-lore"))), e -> later(plugin, () -> {
             p.closeInventory();
             p.performCommand("stats");
+        }));
+        menu.set(13, Menu.item(Material.KNOWLEDGE_BOOK, m.item("panel.pm-guide"), List.of(m.item("panel.pm-guide-lore"))), e -> later(plugin, () -> {
+            p.closeInventory();
+            guide(plugin, p);
         }));
         if (p.hasPermission("nanocore.admin")) {
             menu.set(22, Menu.item(Material.COMPARATOR, m.item("panel.title"), List.of()), e -> later(plugin, () -> ControlPanel.open(plugin, p)));

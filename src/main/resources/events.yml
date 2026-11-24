@@ -25,7 +25,30 @@
 #     vote: true (players vote with /vote: top 3, never themselves)
 #     lives: deaths allowed before a player is out and watches as a spectator
 #   prizes: { places: [250, 150, 100], participation: 25, trophy: true, trophy-item: gold_ingot,
-#             goal: 400, goal-bonus: 50, active-actions: 20 }
+#             goal: 400, goal-bonus: 50, active-actions: 20, share: 1000, share-min: 10 }
+#             (share: a pot split among everyone by points, paid when the goal is reached or when there's no goal)
+#   requires: a milestone that must be unlocked before the daily schedule can pick it
+#   winner: time (races: the best time wins)
+#
+# Gameplay parts a phase can use (see the events below for examples):
+#   waves: [{ mobs: ["zombie 10", "skeleton 5 Bone Archer"], health: 1.5, damage: 1.2, armor: iron, weapon: iron_sword,
+#            effects: [speed], next: cleared | 2m }]      spawn-area: an area for the mobs (else around the players)
+#   scale: true (more mobs with more players)   boss: { type, name, health, abilities: [minions, slam, leap, shield,
+#            enrage, teleport, pull], minion: zombie, existing: true (the Ender Dragon: track it, don't spawn) }
+#            end: { cleared: true } ends the phase when the waves and the boss are beaten
+#   lose: { timer: true, all-down: true }  the event is lost (no prizes, no unlock) if time runs out first or everyone is out
+#   plots: { area, size, gap }  own protected plot per player   teleport: area | plot   themes: [a random theme]
+#   collect: { count, pool: [items], at-board }  a list for /event handin   end: { finishers: 3 }
+#   treasure: { chests, radius, around: an area, coins, trophy }  "event.treasure" per chest found
+#   race: { start, checkpoints: [areas], finish }   hold: an area (king of the hill, "event.hold" per second)
+#   fill: { area, block }  out-below: a height   revive: true   survivor-points: true ("event.survive")   breakable: [blocks]
+#   seekers: 2   blind-seekers: true ("event.hide" per second hidden)   streak: { at: 3, points: 1 }   respawn-protection: 30s
+#   deliver: { items: {item: points}, need: {item or #tag: amount}, at-board, storehouse }  /event deliver ("event.deliver")
+#   checklist: [tasks]  an admin ticks them with /event check <n>; end: { goal: true } when all are done
+#   shop-tax: 0  player shop tax while the phase runs
+# Points from parts: event.wave_kill, event.boss_damage, event.boss_kill, event.deliver, event.treasure, event.hold,
+#   event.survive, event.hide, use.ender_eye.
+# New events can also be made in game: /event create <new-id> <template>, then /event edit.
 
 mining_rush:
   name: "Mining Rush"
@@ -110,3 +133,452 @@ monster_hunt:
   prizes:
     goal: 400
     goal-bonus: 50
+
+# --- More regular events ---------------------------------------------------------------------------------------
+# Events marked "auto: false" need an area made first (/nc area ..., see each event), then set auto: true
+# (or switch it on in /event edit) to put them in the daily pool. You can always start any event with /event start.
+
+purge:
+  name: "Purge"
+  icon: netherite_sword
+  rules:
+    - "PvP everywhere except in town. When you're killed, each item stack has a 25% chance to drop."
+    - "Most kills wins. From your 3rd kill in a row, every kill is worth a bonus point."
+    - "After dying you're safe from other players for 30 seconds (until you attack)."
+  join: auto
+  min-players: 3
+  safe-zones: [town]
+  phases:
+    - name: "Purge!"
+      end: { mc-days: 1 }
+      points: { kill.player: 1 }
+      rules: { pvp: true, drop-chance: 25 }
+      streak: { at: 3, points: 1 }
+      respawn-protection: 30s
+
+town_expansion:
+  name: "Town Expansion Day"
+  icon: bricks
+  # Needs the circle or box area "town".
+  auto: false
+  area: town
+  rules:
+    - "Build anything in town for 2 hours. Blocks you place in town are counted."
+    - "Then 30 minutes of voting: pick your top 3 builders with /vote."
+  join: opt-in
+  min-players: 3
+  weekdays: [sat, sun]
+  winner: votes
+  phases:
+    - name: "Build"
+      end: { timer: 2h }
+      points: { "place.*": 1 }
+    - name: "Vote"
+      end: { timer: 30m, ready: all }
+      vote: true
+  prizes: { active-actions: 200 }
+
+carnival:
+  name: "Carnival Day"
+  icon: cake
+  # Needs a box area "carnival" (plots of 24 x 24 are laid out inside it, from its corner).
+  auto: false
+  rules:
+    - "Build a minigame on your own plot in the carnival area. Type /event done when it's ready."
+    - "Then everyone plays: /event plots shows where each game is. Last, vote for the best game with /vote."
+  join: opt-in
+  late-join: false
+  min-players: 3
+  winner: votes
+  phases:
+    - name: "Build your game"
+      end: { ready: all, timer: 3h }
+      plots: { area: carnival, size: 24, gap: 4 }
+      teleport: plot
+    - name: "Play time"
+      end: { timer: 45m }
+      plots: { area: carnival, size: 24, gap: 4 }
+    - name: "Vote"
+      end: { timer: 15m, ready: all }
+      plots: { area: carnival, size: 24, gap: 4 }
+      vote: true
+
+build_battle:
+  name: "Build Battle"
+  icon: crafting_table
+  # Needs a box area "arena" (plots of 16 x 16 inside it).
+  auto: false
+  rules:
+    - "A random theme, your own plot and creative mode for 45 minutes. Your own things come back afterwards."
+    - "Then vote for the best builds with /vote. Top 3 win."
+  join: opt-in
+  late-join: false
+  min-players: 2
+  winner: votes
+  phases:
+    - name: "Build"
+      end: { timer: 45m }
+      themes: [pirate ship, treehouse, dragon, castle, spaceship, underwater base, haunted house, giant food, volcano, robot, lighthouse, train station]
+      plots: { area: arena, size: 16, gap: 3 }
+      teleport: plot
+      kit: { items: [], gamemode: creative }
+    - name: "Vote"
+      end: { timer: 10m, ready: all }
+      plots: { area: arena, size: 16, gap: 3 }
+      vote: true
+
+scavenger_hunt:
+  name: "Scavenger Hunt"
+  icon: bundle
+  rules:
+    - "Everyone gets the same list of 15 items (sidebar and /event list)."
+    - "Bring the full list to the quest board and type /event handin. The first 3 win."
+  join: opt-in
+  min-players: 2
+  phases:
+    - name: "Get ready"
+      end: { timer: 2m }
+    - name: "Hunt!"
+      end: { timer: 45m, finishers: 3 }
+      collect:
+        count: 15
+        at-board: true
+        pool: [oak_log, cobblestone, wheat, sugar_cane, string, bone, rotten_flesh, gunpowder, iron_ingot, copper_ingot, gold_ingot,
+               redstone, lapis_lazuli, flint, feather, leather, egg, apple, pumpkin, melon_slice, cactus, kelp, sweet_berries, bamboo,
+               clay_ball, honeycomb, ink_sac, slime_ball, spider_eye, arrow, white_wool, glass, brick, paper, book, torch, ladder,
+               bucket, shears, compass, clock, cooked_beef, bread, cake, painting, flower_pot, rabbit_hide, glow_berries,
+               amethyst_shard, pointed_dripstone]
+
+treasure_hunt:
+  name: "Treasure Hunt"
+  icon: chest
+  rules:
+    - "5 chests are hidden within 500 blocks of town (or spawn). The action bar says warmer or colder."
+    - "Each chest holds 100 coins and a trophy. Whoever finds the most wins."
+  join: opt-in
+  min-players: 2
+  phases:
+    - name: "Get ready"
+      end: { timer: 2m }
+    - name: "Search!"
+      end: { timer: 30m }
+      treasure: { chests: 5, radius: 500, around: town, coins: 100, trophy: true }
+      points: { event.treasure: 1 }
+  prizes: { places: [100, 50, 25] }
+
+race_day:
+  name: "Race Day"
+  icon: leather_boots
+  # Needs areas "race_start" and "race_finish", and checkpoints "race_cp1", "race_cp2"... in order (missing ones are skipped).
+  auto: false
+  area: race_start
+  rules:
+    - "Run the course as fast as you can. Your time starts when you leave the start line."
+    - "Pass the checkpoints in order. Try as often as you like; your best time counts."
+  join: opt-in
+  min-players: 2
+  winner: time
+  phases:
+    - name: "To the start"
+      end: { timer: 2m }
+      teleport: area
+    - name: "Race!"
+      end: { timer: 30m }
+      race: { start: race_start, checkpoints: [race_cp1, race_cp2, race_cp3, race_cp4], finish: race_finish }
+
+harvest_festival:
+  name: "Harvest Festival"
+  icon: wheat
+  rules:
+    - "All weekend: bring crops to the quest board and type /event deliver."
+    - "Goal: 3,000 crops together. When it's reached, everyone who helped shares 1,000 coins by how much they gave."
+  join: auto
+  min-players: 2
+  weekdays: [sat]
+  winner: none
+  phases:
+    - name: "Harvest"
+      end: { timer: 48h, goal: true }
+      goal: 3000
+      points: { event.deliver: 1 }
+      deliver:
+        at-board: true
+        items: { wheat: 1, carrot: 1, potato: 1, beetroot: 1, pumpkin: 1, melon_slice: 1, sugar_cane: 1, sweet_berries: 1,
+                 cocoa_beans: 1, nether_wart: 1, glow_berries: 1 }
+  prizes: { goal: 3000, share: 1000, share-min: 10, participation: 0 }
+
+double_quest_day:
+  name: "Double Quest Day"
+  icon: writable_book
+  rules:
+    - "Quests pay 1.5 times as much for a whole day. No competition, just a good day to quest."
+  join: auto
+  min-players: 1
+  winner: none
+  phases:
+    - name: "Double Quest Day"
+      end: { timer: 24h }
+      rules: { quest-multiplier: 1.5 }
+  prizes: { participation: 0 }
+
+king_of_the_hill:
+  name: "King of the Hill"
+  icon: golden_helmet
+  # Needs areas "hill_arena" (where you fight) and "hill" (the zone to hold, inside the arena).
+  auto: false
+  area: hill_arena
+  rules:
+    - "Stand on the hill alone to score a point every second. Someone else on it? Nobody scores."
+    - "PvP is on in the arena only, with the event kit. Your own things come back afterwards."
+  join: opt-in
+  late-join: false
+  min-players: 3
+  phases:
+    - name: "Into the arena"
+      end: { timer: 1m }
+      teleport: area
+      kit: { items: [iron_sword, bow, "arrow 32", shield, iron_helmet, iron_chestplate, iron_leggings, iron_boots, "cooked_beef 16"] }
+    - name: "Fight for the hill!"
+      end: { timer: 20m }
+      hold: hill
+      teleport: area
+      points: { event.hold: 1 }
+      rules: { pvp: true, in-area-only: true }
+
+spleef:
+  name: "Spleef Tournament"
+  icon: diamond_shovel
+  # Needs box areas "spleef" (the space above the floor, for teleports) and "spleef_floor" (the snow floor, refilled every round).
+  auto: false
+  area: spleef
+  rules:
+    - "Break the snow under the others. Fall through and you're out for the round."
+    - "3 rounds. Every round you survive scores a point. Most points wins."
+  join: opt-in
+  late-join: false
+  min-players: 2
+  phases:
+    - name: "Round 1"
+      end: { last-standing: true, timer: 5m }
+      fill: { area: spleef_floor, block: snow_block }
+      revive: true
+      teleport: area
+      survivor-points: true
+      breakable: [snow_block]
+      lives: 1
+      points: { event.survive: 1 }
+      rules: { building: false, hunger: false, fall-damage: false, in-area-only: true }
+      kit: { items: [diamond_shovel] }
+    - name: "Round 2"
+      end: { last-standing: true, timer: 5m }
+      fill: { area: spleef_floor, block: snow_block }
+      revive: true
+      teleport: area
+      survivor-points: true
+      breakable: [snow_block]
+      lives: 1
+      points: { event.survive: 1 }
+      rules: { building: false, hunger: false, fall-damage: false, in-area-only: true }
+    - name: "Final round"
+      end: { last-standing: true, timer: 5m }
+      fill: { area: spleef_floor, block: snow_block }
+      revive: true
+      teleport: area
+      survivor-points: true
+      breakable: [snow_block]
+      lives: 1
+      points: { event.survive: 2 }
+      rules: { building: false, hunger: false, fall-damage: false, in-area-only: true }
+
+hide_and_seek:
+  name: "Hide and Seek"
+  icon: spyglass
+  # Plays in the area "town" (everyone is sent there).
+  auto: false
+  area: town
+  rules:
+    - "2 seekers, everyone else hides in town. Seekers can't see for the first 2 minutes."
+    - "A seeker's hit finds you, and you become a seeker. The longer you stay hidden, the more points: the last hider wins."
+  join: opt-in
+  late-join: false
+  min-players: 4
+  phases:
+    - name: "Hide!"
+      end: { timer: 2m }
+      seekers: 2
+      blind-seekers: true
+      teleport: area
+      rules: { pvp: true }
+    - name: "Seek!"
+      end: { timer: 15m }
+      seekers: 2
+      points: { event.hide: 1 }
+      rules: { pvp: true }
+
+market_day:
+  name: "Market Day"
+  icon: emerald
+  requires: player_shops
+  rules:
+    - "No sales tax at player shops all day."
+    - "Shop owners: join with /event join. At the end everyone votes for the best shop with /vote."
+  join: opt-in
+  min-players: 3
+  weekdays: [sun]
+  winner: votes
+  phases:
+    - name: "Market"
+      end: { timer: 23h }
+      shop-tax: 0
+    - name: "Vote for the best shop"
+      end: { timer: 1h, ready: all }
+      shop-tax: 0
+      vote: true
+
+# --- Milestone events (started by an admin: /event start <id>; never picked automatically) --------------------
+
+grand_market:
+  name: "The Grand Market"
+  icon: emerald_block
+  auto: false
+  join: auto
+  winner: none
+  unlocks: player_shops
+  rules:
+    - "Part 1: bring materials for the market square to the quest board (/event deliver)."
+    - "Part 2: build your stall in the market. Type /event done when it's ready. When everyone is, player shops open!"
+  phases:
+    - name: "Gather materials"
+      end: { goal: true, timer: 7d }
+      lose: { timer: true }
+      points: { event.deliver: 1 }
+      deliver:
+        at-board: true
+        need: { "#planks": 2000, stone_bricks: 1000, glass: 256, lantern: 128 }
+    - name: "Build your stall"
+      end: { ready: online, timer: 3h }
+  prizes: { share: 500, share-min: 10, participation: 0 }
+
+first_flame:
+  name: "The First Flame"
+  icon: flint_and_steel
+  auto: false
+  join: auto
+  unlocks: nether
+  rules:
+    - "Part 1: bring obsidian to the quest board (/event deliver) to build the town portal."
+    - "Part 2, the Breach: at night Nether mobs pour out in 5 waves, then The Gatekeeper."
+    - "Win and the Nether opens for everyone. If everyone falls (3 lives each) or 30 minutes pass, the portal seals for another night."
+  phases:
+    - name: "Gather obsidian"
+      end: { goal: true }
+      points: { event.deliver: 1 }
+      deliver: { at-board: true, need: { obsidian: 64 } }
+    - name: "Wait for night"
+      end: { mc-time: 13000, skip-if-past: true, timer: 15m }
+    - name: "The Breach"
+      end: { cleared: true, timer: 30m }
+      lives: 3
+      lose: { timer: true, all-down: true }
+      # Mobs come out of the area "portal" if you make one; otherwise they appear around the players.
+      spawn-area: portal
+      points: { event.wave_kill: 1, event.boss_damage: 1, event.boss_kill: 25 }
+      waves:
+        - mobs: ["piglin 6"]
+        - mobs: ["piglin 6", "magma_cube 3"]
+        - mobs: ["blaze 4", "piglin 4"]
+        - mobs: ["wither_skeleton 4", "blaze 3"]
+        - mobs: ["ghast 1", "wither_skeleton 4", "piglin_brute 2"]
+      boss: { type: piglin_brute, name: "<dark_red>The Gatekeeper", health: 400, abilities: [minions, slam, leap, enrage], minion: piglin }
+
+nether_day:
+  name: "Nether Day"
+  icon: crimson_nylium
+  auto: false
+  join: auto
+  winner: none
+  unlocks: nether_roof
+  rules:
+    - "Build the Nether hub together. The goals are on the sidebar; an admin ticks them off (/event check <n>)."
+    - "When all are done, the Nether roof opens."
+  phases:
+    - name: "Build the Nether hub"
+      end: { goal: true, timer: 24h }
+      lose: { timer: true }
+      checklist: ["Paths to a fortress", "A bastion outpost", "A hub with portals"]
+  prizes: { participation: 50, active-actions: 200 }
+
+the_forge:
+  name: "The Forge"
+  icon: smithing_table
+  auto: false
+  join: auto
+  unlocks: netherite
+  rules:
+    - "Part 1: feed the forge 32 ancient debris (/event deliver). It's used up."
+    - "Part 2: defend the forge from 4 waves while it heats. Win and netherite can be crafted."
+  phases:
+    - name: "Feed the forge"
+      end: { goal: true }
+      points: { event.deliver: 10 }
+      deliver: { storehouse: false, need: { ancient_debris: 32 } }
+    - name: "Defend the forge"
+      end: { cleared: true, timer: 20m }
+      lives: 3
+      lose: { timer: true, all-down: true }
+      spawn-area: forge
+      points: { event.wave_kill: 1 }
+      waves:
+        - mobs: ["wither_skeleton 5"]
+        - mobs: ["wither_skeleton 4", "piglin_brute 2"]
+        - mobs: ["wither_skeleton 6", "blaze 3"]
+        - mobs: ["piglin_brute 4", "wither_skeleton 4"]
+          armor: iron
+
+end_times:
+  name: "The End Times"
+  icon: ender_eye
+  auto: false
+  join: auto
+  unlocks: end
+  rules:
+    - "Part 1: find the stronghold together. Every eye of ender thrown counts (30 together)."
+    - "Part 2: meet at the stronghold (/event done when you're there)."
+    - "Part 3: survive 6 waves, then The Void Herald. Win and the End opens."
+  phases:
+    - name: "Find the stronghold"
+      end: { goal: true }
+      goal: 30
+      points: { use.ender_eye: 1 }
+    - name: "Gather at the stronghold"
+      end: { ready: online, timer: 30m }
+    - name: "The Last Stand"
+      end: { cleared: true, timer: 40m }
+      lives: 3
+      lose: { timer: true, all-down: true }
+      points: { event.wave_kill: 1, event.boss_damage: 1, event.boss_kill: 50 }
+      waves:
+        - mobs: ["enderman 6"]
+        - mobs: ["vex 6", "evoker 2"]
+        - mobs: ["phantom 6", "enderman 4"]
+        - mobs: ["ravager 2", "pillager 6"]
+        - mobs: ["evoker 3", "vindicator 6"]
+        - mobs: ["enderman 6", "ravager 2", "vex 4"]
+          health: 1.5
+      boss: { type: enderman, name: "<dark_purple>The Void Herald", health: 600, abilities: [teleport, minions, pull, shield, enrage], minion: endermite }
+
+fall_of_the_dragon:
+  name: "Fall of the Dragon"
+  icon: dragon_head
+  auto: false
+  join: auto
+  unlocks: elytra
+  rules:
+    - "Fight the Ender Dragon together. Damage dealt scores points; the last hit is worth 50."
+    - "When the dragon dies, elytra can glide for everyone."
+  phases:
+    - name: "Slay the dragon"
+      end: { cleared: true }
+      points: { event.boss_damage: 1, event.boss_kill: 50 }
+      boss: { type: ender_dragon, name: "The Ender Dragon", existing: true }
+  prizes: { places: [300, 200, 100], participation: 50 }

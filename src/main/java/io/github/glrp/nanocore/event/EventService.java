@@ -71,6 +71,7 @@ public final class EventService implements Listener {
     private final Database db;
     private final Messages msg;
     private final KitService kits;
+    private final EventParts parts;
     private final EventDisplay display = new EventDisplay();
     private final Discord discord;
     private final NamespacedKey trophyKey;
@@ -94,6 +95,7 @@ public final class EventService implements Listener {
         this.db = db;
         this.msg = msg;
         this.kits = new KitService(plugin, db);
+        this.parts = new EventParts(plugin, this, msg);
         this.discord = new Discord(plugin.getLogger());
         this.trophyKey = new NamespacedKey(plugin, "trophy");
         reload();
@@ -123,6 +125,10 @@ public final class EventService implements Listener {
                     Material m = Material.matchMaterial(id);
                     return m != null && m.isItem();
                 },
+                id -> {
+                    org.bukkit.entity.EntityType t = org.bukkit.Registry.ENTITY_TYPE.get(NamespacedKey.minecraft(id));
+                    return t != null && t.isAlive() && t.isSpawnable();
+                },
                 w -> plugin.getLogger().warning(f.getName() + ": " + w));
     }
 
@@ -140,6 +146,41 @@ public final class EventService implements Listener {
 
     public KitService kits() {
         return kits;
+    }
+
+    public EventParts parts() {
+        return parts;
+    }
+
+    World mainWorldForParts() {
+        return mainWorld();
+    }
+
+    /** Points and activity from a gameplay part, counted like a stat ("event.wave_kill", "event.hold"...). */
+    void credit(Player p, String stat, long amount, Location where) {
+        onStat(p, stat, amount, where);
+    }
+
+    void trophyFor(UUID id, int place) {
+        if (def != null) giveTrophy(id, def, place);
+    }
+
+    String ordinalFor(int n) {
+        return ordinal(n);
+    }
+
+    /** Out of the event (fell off the arena...): watches as a spectator until it ends. */
+    void eliminate(Player p) {
+        UUID id = p.getUniqueId();
+        if (state == null || !state.participants.contains(id) || !state.eliminated.add(id)) return;
+        dirty = true;
+        plugin.getServer().sendMessage(msg.msg("events.eliminated", "player", p.getName()));
+        if (!state.kitted.contains(id)) {
+            kits.save(p);
+            state.kitted.add(id);
+        }
+        p.setGameMode(GameMode.SPECTATOR);
+        msg.send(p, "events.spectating");
     }
 
     private void load() {
@@ -177,6 +218,7 @@ public final class EventService implements Listener {
                 db.run(c -> Database.update(c, "DELETE FROM event_active"));
             } else {
                 plugin.getLogger().info("Continuing the event " + def.name());
+                parts.resume();
             }
         }
     }
@@ -317,6 +359,7 @@ public final class EventService implements Listener {
         }
         long now = System.currentTimeMillis();
         boolean first = state.phase < 0;
+        if (!first) parts.endPhase(def.phase(state.phase));
         state.phase = i;
         state.phaseStartedAt = now;
         state.ready.clear();
@@ -337,6 +380,7 @@ public final class EventService implements Listener {
         if (ph.lives() > 0) for (UUID id : state.participants) state.lives.putIfAbsent(id, ph.lives());
         applyWorldRules(ph.rules());
         if (ph.kit() != null) for (UUID id : state.participants) giveKit(id, ph.kit());
+        parts.startPhase(def, ph);
 
         Title title = Title.title(msg.msg("events.phase-title", "event", def.name()), msg.msg("events.phase-subtitle", "phase", ph.name()),
                 Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofMillis(700)));
@@ -391,9 +435,15 @@ public final class EventService implements Listener {
 
     /** Ends the event. With prizes: results, payouts, trophies, history and milestone unlock. Without: just stops. */
     public void finish(boolean prizes) {
+        finish(prizes, false);
+    }
+
+    /** {@code lost}: the event failed (waves not beaten in time, everyone down): no prizes, no unlock. */
+    public void finish(boolean prizes, boolean lost) {
         if (state == null) return;
         EventDef d = def;
         EventState s = state;
+        if (s.phase >= 0) parts.endPhase(phase());
         List<Ranking.Place<UUID>> places = prizes ? ranking() : List.of();
         // Own things back first, so trophies land in the real inventory instead of the kit.
         for (UUID id : new ArrayList<>(s.kitted)) {
@@ -439,17 +489,46 @@ public final class EventService implements Listener {
             }
             discord.send(msg.raw("events.discord-ended").replace("<event>", d.name()),
                     msg.raw("events.discord-players").replace("<count>", String.valueOf(s.participants.size())), Discord.GOLD, fields);
+            if (d.prizes().share() > 0 && (d.prizes().goal() <= 0 || goal)) {
+                Map<UUID, Long> helped = new LinkedHashMap<>();
+                for (UUID id : s.participants) if (s.score(id) > 0) helped.put(id, s.score(id));
+                for (var e : io.github.glrp.nanocore.quest.CommunitySplit.split(helped, d.prizes().share(), d.prizes().shareMin()).entrySet()) {
+                    if (e.getValue() <= 0) continue;
+                    plugin.economy().deposit(e.getKey(), e.getValue(), "event share: " + d.name());
+                    Player online = plugin.getServer().getPlayer(e.getKey());
+                    if (online != null) msg.send(online, "events.share", "coins", plugin.economy().format(e.getValue()));
+                }
+            }
+            for (Ranking.Place<UUID> p : places) {
+                if (p.place() > 3) break;
+                Player online = plugin.getServer().getPlayer(p.who());
+                if (online != null) firework(online.getLocation());
+            }
             recordHistory(d, s, places);
             if (d.unlocks() != null) Milestone.byId(d.unlocks()).ifPresent(m -> plugin.milestones().set(m, true, "event " + d.name()));
+        } else if (lost) {
+            plugin.getServer().sendMessage(msg.msg("events.lost", "event", d.name()));
+            discord.send(msg.raw("events.discord-lost").replace("<event>", d.name()), "", Discord.GOLD, List.of());
         } else {
             plugin.getServer().sendMessage(msg.msg("events.cancelled", "event", d.name()));
         }
+        parts.finish();
         restoreWorld();
         display.clear();
         lastBar.clear();
         state = null;
         def = null;
         save();
+    }
+
+    private static void firework(Location l) {
+        l.getWorld().spawn(l.clone().add(0, 1, 0), org.bukkit.entity.Firework.class, fw -> {
+            var meta = fw.getFireworkMeta();
+            meta.addEffect(org.bukkit.FireworkEffect.builder().withColor(org.bukkit.Color.YELLOW, org.bukkit.Color.ORANGE)
+                    .with(org.bukkit.FireworkEffect.Type.STAR).withFlicker().build());
+            meta.setPower(1);
+            fw.setFireworkMeta(meta);
+        });
     }
 
     private void recordHistory(EventDef d, EventState s, List<Ranking.Place<UUID>> places) {
@@ -498,6 +577,7 @@ public final class EventService implements Listener {
     }
 
     private String shownScore(long score) {
+        if (def != null && def.winner() == EventDef.Winner.TIME) return score > 0 ? PartsRules.raceTime(EventDef.TIME_BASE - score) : "-";
         return String.format(Locale.ROOT, "%,d", def != null && def.winner() == EventDef.Winner.VOTES ? VoteTally.shownPoints(score) : score);
     }
 
@@ -747,8 +827,15 @@ public final class EventService implements Listener {
                     }
                 }
             }
-        } else if (shouldEnd(def.phase(state.phase), now)) {
-            beginPhase(state.phase + 1);
+        } else {
+            EventDef.Phase cur = def.phase(state.phase);
+            boolean timerUp = !state.paused() && state.endsAt > 0 && now >= state.endsAt;
+            if (parts.lost(cur, timerUp)) {
+                finish(false, true);
+                return;
+            }
+            if (shouldEnd(cur, now)) beginPhase(state.phase + 1);
+            if (state != null && state.phase >= 0) parts.tick();
         }
         if (state != null) {
             ticks++;
@@ -778,6 +865,7 @@ public final class EventService implements Listener {
             if (ReadyRule.met(e.ready(), state.ready.size(), readyOnline, state.participants.size(), onlineParticipants().size())) return true;
         }
         if (e.goal() && ph.goal() > 0 && state.totalPoints() >= ph.goal()) return true;
+        if (parts.ended(ph)) return true;
         if (e.lastStanding() && state.participants.size() >= 2) {
             int alive = 0;
             Set<Integer> aliveTeams = new HashSet<>();
@@ -808,7 +896,11 @@ public final class EventService implements Listener {
         db.run(c -> Database.update(c, "INSERT INTO meta (key, value) VALUES ('events.auto-day', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", today));
         ZonedDateTime start = now.toLocalDate().atTime(settings.startTime()).atZone(settings.zone());
         if (!start.isAfter(now)) return; // past today's start time: wait for tomorrow
-        EventDef pick = EventPicks.pick(defs.values(), lastRun, now.toLocalDate(), settings.noRepeatDays(), rng);
+        List<EventDef> open = new ArrayList<>();
+        for (EventDef d : defs.values()) {
+            if (d.requires() == null || Milestone.byId(d.requires()).map(plugin.milestones()::isUnlocked).orElse(true)) open.add(d);
+        }
+        EventDef pick = EventPicks.pick(open, lastRun, now.toLocalDate(), settings.noRepeatDays(), rng);
         if (pick != null) start(pick, start.toInstant().toEpochMilli(), true);
     }
 
@@ -843,6 +935,7 @@ public final class EventService implements Listener {
                         "need", String.valueOf(ReadyRule.needed(ph.end().ready(), state.participants.size(), onlineParticipants().size()))));
             }
         }
+        if (ph != null) common.addAll(parts.lines());
         common.add(Component.empty());
         if (ph != null && ph.vote()) {
             common.add(msg.msg("events.sidebar-votes-secret"));
@@ -870,6 +963,7 @@ public final class EventService implements Listener {
             List<Component> lines = new ArrayList<>(common);
             if (state.participants.contains(id)) {
                 if (ph != null && ph.scores()) lines.add(msg.msg("events.sidebar-you", "score", fmt(state.score(id))));
+                if (ph != null) lines.addAll(parts.lines(p));
                 Integer team = state.teams.get(id);
                 if (team != null) lines.add(msg.msg("events.sidebar-your-team", "team", String.valueOf(team)));
                 Integer lives = state.lives.get(id);
@@ -893,7 +987,13 @@ public final class EventService implements Listener {
         }
         Component name = msg.msg("events.bossbar", "event", def.name(), "phase", ph == null ? msg.raw("events.announced-phase") : ph.name(),
                 "time", left >= 0 ? Durations.format(left) : "-");
-        display.bossBar(plugin.getServer().getOnlinePlayers(), name, progress, color);
+        EventParts.BossBarState boss = ph == null ? null : parts.bossBar();
+        if (boss != null) {
+            name = boss.name();
+            progress = boss.progress();
+            color = boss.color();
+        }
+        display.bossBar(plugin.getServer().getOnlinePlayers(), name, Math.max(0f, Math.min(1f, progress)), color);
     }
 
     private Map<UUID, Long> scoresOfParticipants() {

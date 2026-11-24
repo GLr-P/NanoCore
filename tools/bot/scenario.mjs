@@ -306,6 +306,8 @@ async function shops() {
 
 // --- Control panel (/nc): a setting changed from the GUI is saved; players get their own menu ---
 async function panel() {
+  await expect('/nc help', /opens the menu with everything/, 'help')
+  await expect('/nc help', /control panel/, 'admin help lines')
   const win = await windowAfter(() => bot.chat('/nc'), 'open the control panel')
   console.log(`STEP panel: slot 19 ${win.slots[19]?.name}, 31 ${win.slots[31]?.name}`)
   if (win.slots[19]?.name !== 'player_head' || win.slots[31]?.name !== 'comparator') throw new Error('control panel layout')
@@ -580,6 +582,64 @@ async function third() {
   await connectPal()
   await palSees(0, /Your own things are back/, 'offline player gets their things back on joining', 10000)
   pal.end()
+  await partsTests()
+}
+
+// --- Event gameplay parts: waves and a boss, a collection list, deliveries, holding a zone, a checklist ---
+async function partsTests() {
+  await expect('/tp NanoBot 20.5 -60 20.5', /Teleported/, 'tp to open ground')
+  await sleep(1500)
+  let s = chat.length
+  await expect('/event start waves_test', /Event: Waves Test/, 'start waves test')
+  await waitChat(s, /Wave 1 of 1/, 'wave 1 spawned')
+  await sleep(1000)
+  await expect('/execute if entity @e[type=minecraft:zombie]', /Test passed/, 'wave mobs are there')
+  s = chat.length
+  await expect('/kill @e[type=minecraft:zombie]', /Killed/, 'kill the wave')
+  await waitChat(s, /Test Boss has appeared/, 'boss after the last wave', 10000)
+  s = chat.length
+  await sleep(1000)
+  await expect('/kill @e[type=minecraft:zombie]', /Killed/, 'kill the boss')
+  await waitChat(s, /Victory!/, 'waves cleared', 10000)
+  await waitChat(s, /Waves Test: Done/, 'cleared ends the phase', 10000)
+  await expect('/event end', /Waves Test is over!/, 'end waves test')
+
+  s = chat.length
+  await expect('/event start collect_test', /Event: Collect Test/, 'start collect test')
+  await waitChat(s, /The list: (dirt, stick|stick, dirt)/, 'list announced')
+  await expect('/event join', /You're in Collect Test/, 'join collect test')
+  await expect('/give NanoBot stick 1', /Gave 1/, 'give stick')
+  await expect('/give NanoBot dirt 1', /Gave 1/, 'give dirt')
+  await sleep(500)
+  s = chat.length
+  await expect('/event handin', /NanoBot handed in the full list, 1st/, 'hand in the list')
+  await waitChat(s, /Collect Test: Done/, 'first finisher ends the phase')
+  await expect('/event end', /Collect Test is over!/, 'end collect test')
+
+  s = chat.length
+  await expect('/event start deliver_test', /Event: Deliver Test/, 'start deliver test')
+  await expect('/give NanoBot cobblestone 7', /Gave 7/, 'give cobblestone')
+  await expect('/give NanoBot oak_planks 3', /Gave 3/, 'give planks')
+  await sleep(500)
+  s = chat.length
+  await expect('/event deliver', /Delivered 8 items/, 'deliver (5 cobblestone taken, 2 kept)')
+  await waitChat(s, /Deliver Test: Done/, 'needs met end the phase')
+  if (itemCount('cobblestone') < 2) throw new Error(`deliver (only what was needed should be taken; cobblestone left ${itemCount('cobblestone')})`)
+  await expect('/event end', /Deliver Test is over!/, 'end deliver test')
+
+  await expect('/nanocore area circle hilltest 3', /Area hilltest saved/, 'hill area')
+  await expect('/event start hold_test', /Event: Hold Test/, 'start hold test')
+  await expect('/event join', /You're in Hold Test/, 'join hold test')
+  await sleep(6500)
+  await expect('/event top', /1\. NanoBot [2-9]/, 'holding the zone alone scores')
+  await expect('/event end', /Hold Test is over!/, 'end hold test')
+
+  s = chat.length
+  await expect('/event start checklist_test', /Event: Checklist Test/, 'start checklist test')
+  await expect('/event check 1', /Done: First task/, 'tick task 1')
+  await expect('/event check 2', /Done: Second task/, 'tick task 2')
+  await waitChat(s, /Checklist Test is over!/, 'checklist done ends the event', 10000)
+  await waitChat(s, /The End.*now unlocked/, 'event unlocks its milestone', 10000)
 }
 
 connect().then(async () => {

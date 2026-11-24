@@ -43,6 +43,12 @@ public final class Messages {
         return s == null ? key : s;
     }
 
+    /** A list of lines (like the guide's pages), falling back to the built-in file. */
+    public List<String> rawList(String key) {
+        List<String> l = file.getStringList(key);
+        return l.isEmpty() ? defaults.getStringList(key) : l;
+    }
+
     /** Placeholders as name/value pairs: msg("economy.paid", "player", "Sam", "amount", "5 coins"). */
     public Component msg(String key, String... pairs) {
         return MM.deserialize(raw(key), resolver(pairs));

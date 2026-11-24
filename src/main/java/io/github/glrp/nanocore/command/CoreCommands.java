@@ -190,6 +190,20 @@ public final class CoreCommands {
                     else io.github.glrp.nanocore.admin.PlayerMenu.open(plugin, p);
                     return Command.SINGLE_SUCCESS;
                 })
+                .then(Commands.literal("help").executes(ctx -> {
+                    CommandSender s = ctx.getSource().getSender();
+                    for (String line : msg().rawList("help.player")) s.sendMessage(Messages.parse(line));
+                    if (s.hasPermission("nanocore.admin")) for (String line : msg().rawList("help.admin")) s.sendMessage(Messages.parse(line));
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("guide").executes(ctx -> {
+                    if (!(ctx.getSource().getSender() instanceof Player p)) {
+                        msg().send(ctx.getSource().getSender(), "general.players-only");
+                        return 0;
+                    }
+                    io.github.glrp.nanocore.admin.PlayerMenu.guide(plugin, p);
+                    return Command.SINGLE_SUCCESS;
+                }))
                 .then(Commands.literal("version").requires(CoreCommands::admin).executes(ctx -> {
                     ctx.getSource().getSender().sendMessage(Component.text(
                             "NanoCore " + plugin.getPluginMeta().getVersion() + " on " + plugin.getServer().getMinecraftVersion(), NamedTextColor.GREEN));

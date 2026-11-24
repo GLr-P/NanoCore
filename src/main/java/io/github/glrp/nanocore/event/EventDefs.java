@@ -25,13 +25,18 @@ public final class EventDefs {
 
     public static Map<String, EventDef> parse(ConfigurationSection root, EventDef.Prizes defaults, Predicate<String> validMilestone,
                                               Predicate<String> validItem, Consumer<String> warn) {
+        return parse(root, defaults, validMilestone, validItem, mob -> true, warn);
+    }
+
+    public static Map<String, EventDef> parse(ConfigurationSection root, EventDef.Prizes defaults, Predicate<String> validMilestone,
+                                              Predicate<String> validItem, Predicate<String> validMob, Consumer<String> warn) {
         Map<String, EventDef> out = new LinkedHashMap<>();
         if (root == null) return out;
         for (String id : root.getKeys(false)) {
             ConfigurationSection s = root.getConfigurationSection(id);
             if (s == null) continue;
             try {
-                out.put(id, parseOne(id, s, defaults, validMilestone, validItem, warn));
+                out.put(id, parseOne(id, s, defaults, validMilestone, validItem, validMob, warn));
             } catch (IllegalArgumentException e) {
                 warn.accept("events: " + id + ": " + e.getMessage() + ", skipped");
             }
@@ -40,7 +45,7 @@ public final class EventDefs {
     }
 
     private static EventDef parseOne(String id, ConfigurationSection s, EventDef.Prizes defaults, Predicate<String> validMilestone,
-                                     Predicate<String> validItem, Consumer<String> warn) {
+                                     Predicate<String> validItem, Predicate<String> validMob, Consumer<String> warn) {
         String join = s.getString("join", "opt-in").toLowerCase(Locale.ROOT);
         if (!join.equals("opt-in") && !join.equals("auto")) throw new IllegalArgumentException("join must be opt-in or auto");
 
@@ -49,7 +54,7 @@ public final class EventDefs {
         for (Map<?, ?> map : s.getMapList("phases")) {
             n++;
             ConfigurationSection p = new MemoryConfiguration().createSection("p", map);
-            phases.add(phase(id, n, p, validItem, warn));
+            phases.add(phase(id, n, p, validItem, validMob, warn));
         }
         if (phases.isEmpty()) throw new IllegalArgumentException("no phases");
 
@@ -64,11 +69,16 @@ public final class EventDefs {
         try {
             winner = EventDef.Winner.valueOf(s.getString("winner", "score").trim().toUpperCase(Locale.ROOT).replace('-', '_'));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("winner must be score, votes, last-standing or none");
+            throw new IllegalArgumentException("winner must be score, votes, last-standing, time or none");
         }
 
         String unlocks = blank(s.getString("unlocks"));
         if (unlocks != null && !validMilestone.test(unlocks)) throw new IllegalArgumentException("unknown milestone '" + unlocks + "'");
+        String requires = blank(s.getString("requires"));
+        if (requires != null && !validMilestone.test(requires)) {
+            warn.accept("events: " + id + ": unknown milestone in requires '" + requires + "', ignored");
+            requires = null;
+        }
 
         ConfigurationSection pz = s.getConfigurationSection("prizes");
         EventDef.Prizes prizes = defaults;
@@ -81,7 +91,7 @@ public final class EventDefs {
             }
             prizes = new EventDef.Prizes(List.copyOf(places), pz.getLong("participation", defaults.participation()),
                     pz.getBoolean("trophy", defaults.trophy()), trophyItem, pz.getLong("goal", 0), pz.getLong("goal-bonus", 0),
-                    pz.getLong("active-actions", defaults.activeActions()));
+                    pz.getLong("active-actions", defaults.activeActions()), Math.max(0, pz.getLong("share", 0)), Math.max(0, pz.getLong("share-min", 0)));
         }
 
         return new EventDef(id, s.getString("name", id.replace('_', ' ')), s.getString("icon", "clock"),
@@ -89,15 +99,16 @@ public final class EventDefs {
                 Math.max(0, s.getInt("max-players", 0)), Math.max(0, Math.min(8, s.getInt("teams", 0))),
                 blank(s.getString("area")), List.copyOf(s.getStringList("safe-zones")),
                 s.getBoolean("auto", true), Math.max(1, s.getInt("weight", 1)), Math.max(0, s.getInt("min-players", 2)),
-                days, List.copyOf(phases), prizes, unlocks, winner);
+                days, List.copyOf(phases), prizes, unlocks, winner, requires);
     }
 
-    private static EventDef.Phase phase(String event, int n, ConfigurationSection p, Predicate<String> validItem, Consumer<String> warn) {
+    private static EventDef.Phase phase(String event, int n, ConfigurationSection p, Predicate<String> validItem, Predicate<String> validMob,
+                                        Consumer<String> warn) {
         String where = "events: " + event + ": phase " + n;
         ConfigurationSection e = p.getConfigurationSection("end");
         EventDef.End end;
         if (e == null) {
-            end = new EventDef.End(0, 0, -1, null, false, false, false);
+            end = new EventDef.End(0, 0, -1, null, false, false, false, false, 0);
         } else {
             long timer = 0;
             if (e.contains("timer")) {
@@ -114,7 +125,8 @@ public final class EventDefs {
                 warn.accept(where + ": ready must be all, online or a share like 75%; using all");
                 ready = "all";
             }
-            end = new EventDef.End(timer, ticks, time, ready, e.getBoolean("goal", false), e.getBoolean("last-standing", false), e.getBoolean("skip-if-past", false));
+            end = new EventDef.End(timer, ticks, time, ready, e.getBoolean("goal", false), e.getBoolean("last-standing", false), e.getBoolean("skip-if-past", false),
+                    e.getBoolean("cleared", false), Math.max(0, e.getInt("finishers", 0)));
         }
 
         Map<String, Long> points = new LinkedHashMap<>();
@@ -163,7 +175,8 @@ public final class EventDefs {
         }
 
         return new EventDef.Phase(p.getString("id", "phase-" + n), p.getString("name", "Phase " + n), end, points, rules, kit,
-                p.getBoolean("vote", false), Math.max(0, p.getInt("lives", 0)), Math.max(0, p.getLong("goal", 0)));
+                p.getBoolean("vote", false), Math.max(0, p.getInt("lives", 0)), Math.max(0, p.getLong("goal", 0)),
+                PartsDefs.parse(p, where, validItem, validMob, warn));
     }
 
     private static Boolean bool(ConfigurationSection s, String key) {
