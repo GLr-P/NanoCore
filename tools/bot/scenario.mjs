@@ -342,6 +342,8 @@ async function palSees(start, pattern, step, timeout = 8000) {
 
 async function events(count) {
   if (!pal) await connectPal()
+  await expect('/tp NanoBot 42.5 -60 42.5', /Teleported/, 'back to the quest area')
+  await sleep(1500)
 
   // Mining Rush: join, mine two ores, check the score, end with prizes.
   await expect('/event start mining_rush', /Event: Mining Rush/, 'start mining rush')
