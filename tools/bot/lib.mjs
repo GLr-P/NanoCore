@@ -22,5 +22,14 @@ export function createTestBot(username, opts = {}) {
     }
     return write(name, params)
   }
+  // Real clients send tick_end every tick (since 1.21.2); Mineflayer 4.39 doesn't. Without it the server
+  // kicks the bot for "invalid_player_movement" about a second after spawning.
+  let ticker
+  bot.once('login', () => {
+    ticker = setInterval(() => {
+      if (bot._client.state === 'play') write('tick_end', {})
+    }, 50)
+  })
+  bot.on('end', () => clearInterval(ticker))
   return bot
 }
