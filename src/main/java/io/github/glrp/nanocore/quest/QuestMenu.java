@@ -62,7 +62,7 @@ public final class QuestMenu {
         }
         Quest c = qs.community();
         if (c != null) menu.set(COMMUNITY_SLOT, communityIcon(plugin, p, c), e -> later(plugin, () -> detail(plugin, p, c.id(), atBoard)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     private static String range(NanoCorePlugin plugin, Tier t) {
@@ -155,7 +155,7 @@ public final class QuestMenu {
             }
         }
         menu.set(BACK, button(Material.ARROW, msg.item("quests.button-back")), e -> later(plugin, () -> open(plugin, p, atBoard)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     private static ItemStack button(Material m, Component name) {

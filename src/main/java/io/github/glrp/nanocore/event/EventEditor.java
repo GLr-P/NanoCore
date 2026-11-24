@@ -34,7 +34,6 @@ import java.util.function.Consumer;
  */
 public final class EventEditor implements Listener {
 
-    private static final Map<UUID, String> naming = new ConcurrentHashMap<>();
     private static final String[] WINNERS = {"score", "votes", "last-standing", "time", "none"};
 
     private final NanoCorePlugin plugin;
@@ -113,6 +112,21 @@ public final class EventEditor implements Listener {
         plugin.events().reload();
     }
 
+    /** Puts an event in the daily random pool, or takes it out. */
+    public static void setInPool(NanoCorePlugin plugin, String id, boolean inPool) {
+        File f = fileFor(plugin, id);
+        if (f == null) return;
+        YamlConfiguration y = YamlConfiguration.loadConfiguration(f);
+        y.set(id + ".auto", inPool);
+        try {
+            y.save(f);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Couldn't save " + f.getName() + ": " + e.getMessage());
+            return;
+        }
+        plugin.events().reload();
+    }
+
     // --- menus ---
 
     /** Every event: click to edit, right-click to make a copy and edit that. */
@@ -138,7 +152,7 @@ public final class EventEditor implements Listener {
         }
         menu.set(49, Menu.item(Material.BOOK, m.item("events.editor-help-title"), List.of(m.item("events.editor-help"), m.item("events.editor-help-2"))));
         menu.set(45, Menu.item(Material.ARROW, m.item("panel.back"), List.of()), e -> later(plugin, () -> io.github.glrp.nanocore.admin.ControlPanel.open(plugin, p)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     private static String freeId(NanoCorePlugin plugin, String base) {
@@ -161,9 +175,13 @@ public final class EventEditor implements Listener {
 
         menu.set(10, Menu.item(Material.NAME_TAG, m.item("events.editor-name", "name", s.getString("name", id)), List.of(m.item("events.editor-name-lore"))),
                 e -> later(plugin, () -> {
-                    naming.put(p.getUniqueId(), id);
-                    p.closeInventory();
-                    m.send(p, "events.editor-name-prompt");
+                    io.github.glrp.nanocore.gui.ChatPrompt.ask(plugin, p, m.msg("events.editor-name-prompt"), text -> {
+                        String name = text.length() > 40 ? text.substring(0, 40) : text;
+                        edit(plugin, p, id, sec -> sec.set("name", name));
+                        m.send(p, "events.editor-named", "name", name);
+                        open(plugin, p, id);
+                        return true;
+                    }, () -> open(plugin, p, id));
                 }));
         boolean auto = "auto".equalsIgnoreCase(s.getString("join", "opt-in"));
         menu.set(11, Menu.item(auto ? Material.LIME_DYE : Material.GRAY_DYE, m.item(auto ? "events.editor-join-auto" : "events.editor-join-opt"),
@@ -241,6 +259,17 @@ public final class EventEditor implements Listener {
             open(plugin, p, id);
         }));
 
+        String area = s.getString("area", "");
+        menu.set(33, Menu.item(Material.FILLED_MAP, m.item("events.editor-area", "area", area.isEmpty() ? m.raw("events.editor-area-none") : area),
+                List.of(m.item("events.editor-area-lore"), m.item("events.editor-cycle"))), e -> later(plugin, () -> {
+            List<String> options = new ArrayList<>();
+            options.add("");
+            for (var a : plugin.areas().all()) options.add(a.name());
+            if (!area.isEmpty() && !options.contains(area)) options.add(area);
+            String next = options.get((options.indexOf(area) + 1) % options.size());
+            edit(plugin, p, id, sec -> sec.set("area", next.isEmpty() ? null : next));
+            open(plugin, p, id);
+        }));
         menu.set(45, Menu.item(Material.ARROW, m.item("panel.back"), List.of()), e -> later(plugin, () -> list(plugin, p)));
         menu.set(47, Menu.item(Material.LIME_CONCRETE, m.item("events.editor-start"), List.of(m.item("events.editor-start-lore"))), e -> later(plugin, () -> {
             EventDef d = plugin.events().defs().get(id);
@@ -266,7 +295,7 @@ public final class EventEditor implements Listener {
                         list(plugin, p);
                     }, () -> open(plugin, p, id))));
         }
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     private static void number(NanoCorePlugin plugin, Menu menu, int slot, Player p, String id, Material icon, String key, int value, int step, int min, int max,
@@ -305,27 +334,4 @@ public final class EventEditor implements Listener {
         return out;
     }
 
-    // --- naming in chat ---
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onChat(AsyncChatEvent e) {
-        String id = naming.remove(e.getPlayer().getUniqueId());
-        if (id == null) return;
-        e.setCancelled(true);
-        String text = PlainTextComponentSerializer.plainText().serialize(e.message()).trim();
-        Player p = e.getPlayer();
-        later(plugin, () -> {
-            if (!text.equalsIgnoreCase("cancel") && !text.isEmpty()) {
-                String name = text.length() > 40 ? text.substring(0, 40) : text;
-                edit(plugin, p, id, sec -> sec.set("name", name));
-                plugin.messages().send(p, "events.editor-named", "name", name);
-            }
-            open(plugin, p, id);
-        });
-    }
-
-    @EventHandler
-    public void onQuit(PlayerQuitEvent e) {
-        naming.remove(e.getPlayer().getUniqueId());
-    }
 }

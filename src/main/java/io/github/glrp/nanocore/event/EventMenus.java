@@ -74,7 +74,7 @@ public final class EventMenus {
             ev.setBallot(me, List.of());
             vote(plugin, p);
         }));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     // --- admin panel ---
@@ -98,7 +98,7 @@ public final class EventMenus {
                             admin(plugin, p);
                         }));
             }
-            menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+            menu.frame().open(p);
             return;
         }
         EventDef d = ev.current();
@@ -138,7 +138,7 @@ public final class EventMenus {
             List<Component> lore = List.of(msg.item("events.admin-score", "score", String.format(Locale.ROOT, "%,d", s.score(id))), msg.item("events.admin-player-click"));
             menu.set(slot++, head(id, msg.item("events.vote-entry", "player", plugin.economy().name(id)), lore), e -> later(plugin, () -> player(plugin, p, id)));
         }
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     private static void player(NanoCorePlugin plugin, Player admin, UUID id) {
@@ -166,6 +166,6 @@ public final class EventMenus {
             admin(plugin, admin);
         }));
         menu.set(22, Menu.item(Material.ARROW, msg.item("events.admin-back"), List.of()), e -> later(plugin, () -> admin(plugin, admin)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(admin);
+        menu.frame().open(admin);
     }
 }

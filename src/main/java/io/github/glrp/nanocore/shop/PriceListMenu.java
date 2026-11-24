@@ -48,7 +48,7 @@ public final class PriceListMenu {
         menu.set(49, Menu.item(Material.ARROW, msg.item("shop.back"), List.of()), e -> later(plugin, () -> SellMenu.open(plugin, p)));
         if (current > 0) menu.set(45, Menu.item(Material.PAPER, msg.item("shop.page-back"), List.of()), e -> later(plugin, () -> open(plugin, p, current - 1)));
         if (current < pages - 1) menu.set(53, Menu.item(Material.PAPER, msg.item("shop.page-next"), List.of()), e -> later(plugin, () -> open(plugin, p, current + 1)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     /** Opening another window from inside a click is done on the next tick. */

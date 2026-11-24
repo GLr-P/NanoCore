@@ -74,6 +74,13 @@ public final class Messages {
         return rich(key, pairs).decoration(TextDecoration.ITALIC, false);
     }
 
+    /** Item lore from one message: each "\n" in it starts a new line (lore can't wrap by itself). */
+    public List<Component> lines(String key, String... pairs) {
+        List<Component> out = new ArrayList<>();
+        for (String line : raw(key).split("\n")) out.add(MM.deserialize(line, resolver(pairs)).decoration(TextDecoration.ITALIC, false));
+        return out;
+    }
+
     public void send(Audience to, String key, String... pairs) {
         to.sendMessage(msg(key, pairs));
     }

@@ -40,7 +40,7 @@ public record QuestTemplate(
         amounts = Map.copyOf(amounts);
         variants = variants == null ? List.of() : List.copyOf(variants);
         if (scale <= 0) scale = 1;
-        if (weight <= 0) weight = 1;
+        if (weight < 0) weight = 0; // 0 = switched off (never picked)
     }
 
     public Variant variant(String variantId) {

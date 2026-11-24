@@ -41,6 +41,6 @@ public final class MilestoneMenu {
             Component name = Component.text(service.displayName(m), s.unlocked() ? NamedTextColor.GOLD : NamedTextColor.GRAY);
             menu.set(9 + start + i, Menu.item(icon, name, lore));
         }
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 }

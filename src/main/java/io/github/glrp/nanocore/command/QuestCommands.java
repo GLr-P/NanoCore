@@ -51,7 +51,7 @@ public final class QuestCommands {
             for (String id : plugin.quests().templates().keySet()) if (id.startsWith(b.getRemainingLowerCase())) b.suggest(id);
             return b.buildFuture();
         };
-        commands.register(Commands.literal("quests")
+        commands.register(Usage.wrap(Commands.literal("quests")
                 .executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player p)) {
                         msg().send(ctx.getSource().getSender(), "general.players-only");
@@ -83,7 +83,7 @@ public final class QuestCommands {
                                                         .executes(ctx -> set(ctx, StringArgumentType.getString(ctx, "variant"))))))))
                 .then(Commands.literal("status").requires(QuestCommands::admin)
                         .then(Commands.argument("player", StringArgumentType.word()).executes(this::status)))
-                .build(), "Shows the quest board", List.of("quest"));
+                .build(), "quests", plugin::messages), "Your quests (take and claim them at the quest board)", List.of("quest"));
     }
 
     /** "board|storehouse set|remove [x y z]": the block looked at, or the given position. */

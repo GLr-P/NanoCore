@@ -17,6 +17,12 @@ public final class AreaService {
 
     private final Database db;
     private final Map<String, Area> areas = new ConcurrentHashMap<>();
+    private final Map<java.util.UUID, org.bukkit.Location[]> corners = new ConcurrentHashMap<>();
+
+    /** The two box corners a player has marked (index 0 and 1; null until set). Kept until the server stops. */
+    public org.bukkit.Location[] corners(java.util.UUID player) {
+        return corners.computeIfAbsent(player, k -> new org.bukkit.Location[2]);
+    }
 
     public AreaService(Database db) {
         this.db = db;

@@ -82,7 +82,7 @@ public final class PlayerShopMenus {
                 e -> later(plugin, () -> mine(plugin, p)));
         menu.set(15, Menu.item(Material.SPYGLASS, m.item("pshop.browse"), List.of(m.item("pshop.browse-lore", "count", String.valueOf(svc.all().size())))),
                 e -> later(plugin, () -> browse(plugin, p, 0, false, null)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     /** Starts "click your chest" mode and says so. */
@@ -104,7 +104,7 @@ public final class PlayerShopMenus {
         }
         if (slot == 0) menu.set(22, Menu.item(Material.GRAY_DYE, m.item("pshop.mine-none"), List.of()));
         menu.set(49, Menu.item(Material.ARROW, m.item("pshop.back"), List.of()), e -> later(plugin, () -> main(plugin, p)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     // --- the owner's setup window ---
@@ -161,7 +161,7 @@ public final class PlayerShopMenus {
                     msg(plugin).send(p, "pshop.removed");
                     mine(plugin, p);
                 }, () -> editor(plugin, p, s))));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     /** -100 -10 -1 [price] +1 +10 +100 in the row starting at {@code start}. */
@@ -236,7 +236,7 @@ public final class PlayerShopMenus {
         if (s.mode().ownerBuys()) you.add(m.item("pshop.you-carry", "amount", String.valueOf(svc.carried(p, s))));
         if (svc.taxPercent() > 0) you.add(m.item("pshop.tax-note", "percent", trim(svc.taxPercent())));
         menu.set(22, Menu.item(Material.PAPER, m.item("pshop.you"), you));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     private static void fail(NanoCorePlugin plugin, Player p, ShopTrade.Result r) {
@@ -279,7 +279,7 @@ public final class PlayerShopMenus {
             if (admin) io.github.glrp.nanocore.admin.ControlPanel.open(plugin, p);
             else main(plugin, p);
         }));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 
     /** Admin tools for one shop: go there, open its chest or setup, or delete it. */
@@ -310,6 +310,6 @@ public final class PlayerShopMenus {
                     browse(plugin, p, 0, true, null);
                 }, () -> adminShop(plugin, p, s))));
         menu.set(22, Menu.item(Material.ARROW, m.item("pshop.back"), List.of()), e -> later(plugin, () -> browse(plugin, p, 0, true, null)));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 }

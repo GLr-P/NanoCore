@@ -70,8 +70,15 @@ public final class StatsCommands {
         return b.buildFuture();
     };
 
+    private static final SuggestionProvider<CommandSourceStack> PLAYERS = (ctx, b) -> {
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            if (p.getName().toLowerCase(Locale.ROOT).startsWith(b.getRemainingLowerCase())) b.suggest(p.getName());
+        }
+        return b.buildFuture();
+    };
+
     public void register(Commands commands) {
-        commands.register(Commands.literal("stats")
+        commands.register(Usage.wrap(Commands.literal("stats")
                 .executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player p)) {
                         msg().send(ctx.getSource().getSender(), "general.players-only");
@@ -84,7 +91,7 @@ public final class StatsCommands {
                     top(ctx.getSource().getSender(), StringArgumentType.getString(ctx, "stat"));
                     return Command.SINGLE_SUCCESS;
                 })))
-                .then(Commands.argument("player", StringArgumentType.word()).executes(ctx -> {
+                .then(Commands.argument("player", StringArgumentType.word()).suggests(PLAYERS).executes(ctx -> {
                     CommandSender s = ctx.getSource().getSender();
                     String name = StringArgumentType.getString(ctx, "player");
                     Optional<UUID> id = plugin.economy().findByName(name);
@@ -95,7 +102,7 @@ public final class StatsCommands {
                     summary(s, id.get());
                     return Command.SINGLE_SUCCESS;
                 }))
-                .build(), "Shows player statistics");
+                .build(), "stats", plugin::messages), "Your stats, someone else's, or a leaderboard");
     }
 
     private void summary(CommandSender to, UUID id) {

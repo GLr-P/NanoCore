@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
@@ -40,12 +41,6 @@ public class Menu implements InventoryHolder {
         return this;
     }
 
-    public Menu fill(Material filler) {
-        ItemStack pane = item(filler, Component.space(), List.of());
-        for (int i = 0; i < inventory.getSize(); i++) if (inventory.getItem(i) == null) inventory.setItem(i, pane);
-        return this;
-    }
-
     public void open(Player p) {
         p.openInventory(inventory);
     }
@@ -66,7 +61,31 @@ public class Menu implements InventoryHolder {
         stack.editMeta(meta -> {
             meta.displayName(name.decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE));
             meta.lore(lore.stream().map(c -> c.decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE)).toList());
+            meta.addItemFlags(ItemFlag.values()); // buttons show only their text, not "attack damage" and the like
         });
         return stack;
+    }
+
+    /** A button: its name, then the lore lines, then a yellow "what a click does" line. */
+    public static ItemStack button(Material type, Component name, List<Component> lore, Component click) {
+        List<Component> all = new java.util.ArrayList<>(lore);
+        if (click != null) {
+            if (!all.isEmpty()) all.add(Component.empty());
+            all.add(click);
+        }
+        return item(type, name, all);
+    }
+
+    /** Fills empty slots with dark panes and the outer frame with a lighter colour, so buttons stand out. */
+    public Menu frame() {
+        int size = inventory.getSize();
+        ItemStack edge = item(Material.GRAY_STAINED_GLASS_PANE, Component.space(), List.of());
+        ItemStack inside = item(Material.BLACK_STAINED_GLASS_PANE, Component.space(), List.of());
+        for (int i = 0; i < size; i++) {
+            if (inventory.getItem(i) != null) continue;
+            boolean border = i < 9 || i >= size - 9 || i % 9 == 0 || i % 9 == 8;
+            inventory.setItem(i, border && size > 18 ? edge : inside);
+        }
+        return this;
     }
 }

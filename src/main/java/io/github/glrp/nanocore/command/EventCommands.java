@@ -212,7 +212,7 @@ public final class EventCommands {
                             msg().send(s, ok ? "events.admin-removed" : "events.not-in-other", "player", StringArgumentType.getString(ctx, "player"));
                             return ok ? Command.SINGLE_SUCCESS : 0;
                         })))
-                .then(Commands.literal("list").requires(EventCommands::admin).executes(ctx -> {
+                .then(Commands.literal("all").requires(EventCommands::admin).executes(ctx -> {
                     CommandSender s = ctx.getSource().getSender();
                     for (EventDef d : ev().defs().values()) {
                         msg().send(s, "events.admin-list-line", "id", d.id(), "event", d.name(), "phases", String.valueOf(d.phases().size()),
@@ -224,7 +224,7 @@ public final class EventCommands {
                     EventMenus.admin(plugin, p);
                     return Command.SINGLE_SUCCESS;
                 })));
-        commands.register(root.build(), "Server events", List.of("events"));
+        commands.register(Usage.wrap(root.build(), "event", plugin::messages), "What event is on, and how to join it", List.of("events"));
         commands.register(Commands.literal("vote").executes(ctx -> asPlayer(ctx, p -> {
             EventMenus.vote(plugin, p);
             return Command.SINGLE_SUCCESS;

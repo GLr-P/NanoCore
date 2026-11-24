@@ -306,23 +306,48 @@ async function shops() {
 
 // --- Control panel (/nc): a setting changed from the GUI is saved; players get their own menu ---
 async function panel() {
-  await expect('/nc help', /opens the menu with everything/, 'help')
-  await expect('/nc help', /control panel/, 'admin help lines')
+  await expect('/nc help', /the menu with everything/, 'help')
+  await expect('/nc help 99', /after editing the files/, 'admin help lines on the last page')
+  // Half-typed commands list the ways to finish them instead of "Unknown or incomplete command".
+  await expect('/pay', /To use \/pay, type one of these/, 'usage for /pay')
+  await expect('/nc eco', /\/nc eco give <player> <amount>/, 'usage for /nc eco')
+  await expect('/event all', /mining_rush: /, 'admin event list')
   const win = await windowAfter(() => bot.chat('/nc'), 'open the control panel')
-  console.log(`STEP panel: slot 19 ${win.slots[19]?.name}, 31 ${win.slots[31]?.name}`)
+  console.log(`STEP panel: slot 19 ${win.slots[19]?.name}, 31 ${win.slots[31]?.name}, 13 ${win.slots[13]?.name}`)
   if (win.slots[19]?.name !== 'player_head' || win.slots[31]?.name !== 'comparator') throw new Error('control panel layout')
-  await click(31, 'settings')
-  await click(15, 'player shop limit')
+  // Setup checklist > time zone: one click sets it, another puts it back to the server's own.
+  await click(13, 'setup checklist')
+  await click(10, 'time zone step')
   let s = chat.length
+  await click(10, 'pick Pacific')
+  await waitChat(s, /Time zone is now America\/Vancouver/, 'time zone saved')
+  await click(10, 'time zone step again')
+  s = chat.length
+  await click(21, 'server time zone')
+  await waitChat(s, /Time zone is now the server's own/, 'time zone back')
+  bot.closeWindow(bot.currentWindow)
+  await sleep(300)
+  await windowAfter(() => bot.chat('/nc'), 'reopen the control panel')
+  await click(31, 'settings')
+  await click(10, 'money and shops')
+  await click(15, 'player shop limit')
+  s = chat.length
   await click(14, 'limit +1')
   await waitChat(s, /Player shop limit is now 11/, 'setting saved')
   s = chat.length
   await click(12, 'limit -1')
   await waitChat(s, /Player shop limit is now 10/, 'setting back')
+  // Typing a value: the window closes, the next chat line is the answer, and the window comes back.
+  s = chat.length
+  await bot.clickWindow(13, 0, 0)
+  await waitChat(s, /Type the new Player shop limit/, 'number prompt')
+  s = chat.length
+  await windowAfter(() => bot.chat('10'), 'typed value reopens the window')
+  await waitChat(s, /Player shop limit is now 10/, 'typed value saved')
   bot.closeWindow(bot.currentWindow)
   await sleep(300)
   const pm = await palWindowAfter(() => pal.chat('/nc'), 'pal opens the player menu')
-  if (pm.slots[12]?.name !== 'chest' || pm.slots[22]?.name === 'comparator') throw new Error('player menu (wrong buttons)')
+  if (pm.slots[22]?.name !== 'chest' || pm.slots[29]?.name !== 'gold_ingot' || pm.slots[36]?.name === 'comparator') throw new Error('player menu (wrong buttons)')
   pal.closeWindow(pm)
   await sleep(300)
 }

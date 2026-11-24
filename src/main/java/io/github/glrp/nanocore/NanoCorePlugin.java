@@ -100,6 +100,8 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
         pm.registerEvents(events.parts(), this);
         pm.registerEvents(new io.github.glrp.nanocore.event.EventEditor(this), this);
         pm.registerEvents(new EventRulesListener(this), this);
+        pm.registerEvents(new io.github.glrp.nanocore.gui.ChatPrompt(this), this);
+        pm.registerEvents(new io.github.glrp.nanocore.gui.BlockPicker(this), this);
         pm.registerEvents(this, this);
         statsListener.start();
         long flushTicks = settings.statsSaveSeconds() * 20L;
@@ -169,7 +171,15 @@ public final class NanoCorePlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        economy.ensureAccount(e.getPlayer().getUniqueId(), e.getPlayer().getName());
+        Player p = e.getPlayer();
+        economy.ensureAccount(p.getUniqueId(), p.getName());
+        // First time here: a short welcome with buttons for the menu, the guide and the commands.
+        if (!p.hasPlayedBefore() && getConfig().getBoolean("welcome-message", true)) {
+            getServer().getScheduler().runTaskLater(this, () -> {
+                if (!p.isOnline()) return;
+                for (String line : messages.rawList("welcome")) p.sendMessage(io.github.glrp.nanocore.text.Messages.parse(line, "player", p.getName()));
+            }, 60L);
+        }
     }
 
     public void reloadSettings() {

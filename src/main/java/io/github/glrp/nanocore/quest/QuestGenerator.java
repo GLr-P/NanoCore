@@ -60,6 +60,7 @@ public final class QuestGenerator {
                               Set<String> usedTemplates, Set<String> boardCategories, Set<String> tierCategories) {
         List<QuestTemplate> candidates = new ArrayList<>();
         for (QuestTemplate t : templates) {
+            if (t.weight() <= 0) continue; // switched off (Control panel > Quests > Quest kinds)
             if (!t.amounts().containsKey(tier) || usedTemplates.contains(t.id())) continue;
             if (t.requires() != null && !unlocked.test(t.requires())) continue;
             if (tier == Tier.COMMUNITY && (t.objective() == QuestTemplate.Objective.BIOME || t.objective() == QuestTemplate.Objective.STRUCTURE)) continue;

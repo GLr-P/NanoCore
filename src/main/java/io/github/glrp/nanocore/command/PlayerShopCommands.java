@@ -30,7 +30,7 @@ public final class PlayerShopCommands {
     }
 
     public void register(Commands commands) {
-        commands.register(Commands.literal("pshop")
+        commands.register(Usage.wrap(Commands.literal("pshop")
                 .executes(ctx -> player(ctx, p -> PlayerShopMenus.main(plugin, p)))
                 .then(Commands.literal("new").executes(ctx -> player(ctx, p -> PlayerShopMenus.pick(plugin, p))))
                 .then(Commands.literal("browse").executes(ctx -> player(ctx, p -> PlayerShopMenus.browse(plugin, p, 0, false, null))))
@@ -46,7 +46,7 @@ public final class PlayerShopCommands {
                     plugin.messages().send(p, "pshop.removed");
                 })))
                 .then(Commands.literal("list").requires(PlayerShopCommands::admin).executes(this::list))
-                .build(), "Player shops", List.of("playershop", "shops"));
+                .build(), "pshop", plugin::messages), "Make a shop from your chest, or browse all shops", List.of("playershop", "shops"));
     }
 
     private int player(CommandContext<CommandSourceStack> ctx, Consumer<Player> action) {

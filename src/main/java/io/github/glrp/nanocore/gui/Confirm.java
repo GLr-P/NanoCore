@@ -19,6 +19,6 @@ public final class Confirm {
                 e -> plugin.getServer().getScheduler().runTask(plugin, yes));
         menu.set(15, Menu.item(Material.RED_CONCRETE, plugin.messages().item("general.confirm-no"), List.of()),
                 e -> plugin.getServer().getScheduler().runTask(plugin, no));
-        menu.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+        menu.frame().open(p);
     }
 }

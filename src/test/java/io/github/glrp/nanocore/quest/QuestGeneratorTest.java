@@ -36,6 +36,19 @@ class QuestGeneratorTest {
     }
 
     @Test
+    void switchedOffKindsAreNeverPicked() {
+        QuestTemplate on = template("on", "a", Map.of(Tier.EASY, new Range(1, 2)), null);
+        QuestTemplate off = new QuestTemplate("off", "b", "off", "paper", QuestTemplate.Objective.COUNT, List.of("mine.off"), 1,
+                Map.of(Tier.EASY, new Range(1, 2)), null, 0, List.of());
+        Random rng = new Random(3);
+        for (int i = 0; i < 100; i++) {
+            var c = QuestGenerator.pick(List.of(on, off), Tier.EASY, m -> true, rng, Set.of(), Set.of(), Set.of());
+            assertEquals("on", c.template().id());
+        }
+        assertEquals(null, QuestGenerator.pick(List.of(off), Tier.EASY, m -> true, rng, Set.of(), Set.of(), Set.of()), "only off kinds: nothing, no crash");
+    }
+
+    @Test
     void rangesParse() {
         assertEquals(new Range(400, 600), Range.parse("400-600"));
         assertEquals(new Range(500, 500), Range.parse("500"));

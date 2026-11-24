@@ -38,7 +38,6 @@ public final class CoreCommands {
     private static final int TOP_PAGE = 10;
 
     private final NanoCorePlugin plugin;
-    private final Map<UUID, Location[]> corners = new HashMap<>();
 
     public CoreCommands(NanoCorePlugin plugin) {
         this.plugin = plugin;
@@ -70,10 +69,10 @@ public final class CoreCommands {
     }
 
     public void register(Commands commands) {
-        commands.register(balance().build(), "Shows your balance", List.of("bal", "money"));
-        commands.register(pay().build(), "Pays another player");
-        commands.register(baltop().build(), "Richest players", List.of("balancetop"));
-        commands.register(Commands.literal("milestones").executes(this::milestones).build(), "Shows the server's milestones");
+        commands.register(Usage.wrap(balance().build(), "balance", plugin::messages), "Your coins (or another player's)", List.of("bal", "money"));
+        commands.register(Usage.wrap(pay().build(), "pay", plugin::messages), "Give coins to another player");
+        commands.register(Usage.wrap(baltop().build(), "baltop", plugin::messages), "The richest players", List.of("balancetop"));
+        commands.register(Commands.literal("milestones").executes(this::milestones).build(), "What the server has unlocked so far");
         commands.register(Commands.literal("sell").executes(ctx -> {
             if (!(ctx.getSource().getSender() instanceof Player p)) {
                 msg().send(ctx.getSource().getSender(), "general.players-only");
@@ -81,8 +80,8 @@ public final class CoreCommands {
             }
             SellMenu.open(plugin, p);
             return Command.SINGLE_SUCCESS;
-        }).build(), "Sells rare items to the server");
-        commands.register(admin().build(), "NanoCore menu (everything in one window)", List.of("nc"));
+        }).build(), "Sell rare items to the server (small daily limit)");
+        commands.register(Usage.wrap(admin().build(), "nc", plugin::messages), "The menu with everything (and /nc help for all commands)", List.of("nc"));
     }
 
     // --- /balance [player] ---
@@ -190,12 +189,10 @@ public final class CoreCommands {
                     else io.github.glrp.nanocore.admin.PlayerMenu.open(plugin, p);
                     return Command.SINGLE_SUCCESS;
                 })
-                .then(Commands.literal("help").executes(ctx -> {
-                    CommandSender s = ctx.getSource().getSender();
-                    for (String line : msg().rawList("help.player")) s.sendMessage(Messages.parse(line));
-                    if (s.hasPermission("nanocore.admin")) for (String line : msg().rawList("help.admin")) s.sendMessage(Messages.parse(line));
-                    return Command.SINGLE_SUCCESS;
-                }))
+                .then(Commands.literal("help")
+                        .executes(ctx -> help(ctx.getSource().getSender(), 1))
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                                .executes(ctx -> help(ctx.getSource().getSender(), IntegerArgumentType.getInteger(ctx, "page")))))
                 .then(Commands.literal("guide").executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player p)) {
                         msg().send(ctx.getSource().getSender(), "general.players-only");
@@ -222,6 +219,11 @@ public final class CoreCommands {
                         .executes(ctx -> stats(ctx, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word())
                                 .executes(ctx -> stats(ctx, StringArgumentType.getString(ctx, "prefix"))))));
+    }
+
+    private int help(CommandSender s, int page) {
+        Help.show(s, msg(), s.hasPermission("nanocore.admin"), page);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static boolean admin(CommandSourceStack src) {
@@ -326,7 +328,7 @@ public final class CoreCommands {
                 .then(Commands.literal("pos2").executes(ctx -> corner(ctx, 1)))
                 .then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player p)) return 0;
-                    Location[] c = corners.get(p.getUniqueId());
+                    Location[] c = plugin.areas().corners(p.getUniqueId());
                     if (c == null || c[0] == null || c[1] == null || !c[0].getWorld().equals(c[1].getWorld())) {
                         msg().send(p, "areas.need-corners");
                         return 0;
@@ -365,7 +367,7 @@ public final class CoreCommands {
             return 0;
         }
         Location l = p.getLocation().toBlockLocation();
-        corners.computeIfAbsent(p.getUniqueId(), k -> new Location[2])[index] = l;
+        plugin.areas().corners(p.getUniqueId())[index] = l;
         msg().send(p, "areas.pos-set", "n", String.valueOf(index + 1),
                 "x", String.valueOf(l.getBlockX()), "y", String.valueOf(l.getBlockY()), "z", String.valueOf(l.getBlockZ()));
         return Command.SINGLE_SUCCESS;

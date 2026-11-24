@@ -1,4 +1,8 @@
-# NanoCore settings. Reload with /nanocore reload (the database file needs a restart).
+# NanoCore settings. Everything here can also be changed in game: /nc > Settings (changes save to this file).
+# After editing this file by hand: /nc > Settings > Reload, or /nc reload. The database file needs a restart.
+
+# Greet players on their first join with buttons for the menu (/nc), the guide and the commands.
+welcome-message: true
 
 currency:
   singular: coin
